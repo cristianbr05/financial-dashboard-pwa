@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Financiero - Analizador v6.3 PWA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: {} } }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        :root { color-scheme: light; }
+        .dark { color-scheme: dark; }
+        body { transition: background-color 0.3s ease, color 0.3s ease; }
+        .transition-theme { transition: background-color 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.3s; }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025); }
+        .dark .glass-panel { background: rgba(31, 41, 55, 0.85); border: 1px solid rgba(75, 85, 99, 0.3); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        input[type="search"]::-webkit-search-cancel-button { display: none; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 6px; }
+        body.incognito-active .blur-data { filter: blur(8px); opacity: 0.6; transition: filter 0.3s ease, opacity 0.3s ease; user-select: none; }
+        body.incognito-active canvas { filter: blur(10px) grayscale(50%); opacity: 0.7; pointer-events: none; transition: filter 0.3s ease, opacity 0.3s ease; }
+        body.incognito-active .blur-data:hover { filter: blur(0px); opacity: 1; }
+        @keyframes toastEnter { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes toastLeave { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
+        .toast-enter { animation: toastEnter 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; pointer-events: auto; }
+        .toast-leave { animation: toastLeave 0.3s ease-in forwards; pointer-events: auto; }
+        .calendar-day.start-range { background-color: #3b82f6 !important; color: white !important; border-radius: 9999px 0 0 9999px !important; font-weight: bold; }
+        .calendar-day.end-range { background-color: #3b82f6 !important; color: white !important; border-radius: 0 9999px 9999px 0 !important; font-weight: bold; }
+        .calendar-day.in-range { background-color: #dbeafe !important; color: #1e40af !important; border-radius: 0 !important; }
+        .dark .calendar-day.in-range { background-color: rgba(59, 130, 246, 0.25) !important; color: #93c5fd !important; }
+        .calendar-day.single-selected { background-color: #3b82f6 !important; color: white !important; border-radius: 9999px !important; font-weight: bold; }
+        .calendar-day.hover-range { background-color: #eff6ff !important; color: #2563eb !important; border-radius: 0 !important; }
+        .dark .calendar-day.hover-range { background-color: rgba(59, 130, 246, 0.15) !important; color: #bfdbfe !important; }
+        .calendar-day.hover-range.start-range-provisional { border-radius: 9999px 0 0 9999px !important; }
+        .calendar-day.hover-range.end-range-provisional { border-radius: 0 9999px 9999px 0 !important; }
+        .calendar-day.hover-range.single-provisional { border-radius: 9999px !important; }
+        .calendar-day .day-num { position: relative; z-index: 10; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: 9999px; }
+        .calendar-day.start-range .day-num, .calendar-day.end-range .day-num, .calendar-day.single-selected .day-num { background-color: #2563eb; }
+    </style>
+    <script>
+        (function setupPWA() {
+            try {
+                const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, 512, 512); ctx.font = '280px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('📊', 256, 280); 
+                const iconDataUrl = canvas.toDataURL('image/png');
+                const baseUrl = window.location.href.split('#')[0].split('?')[0];
+                const manifest = { name: "Dashboard Financiero", short_name: "FinDash", description: "Analizador local privado", start_url: baseUrl, display: "standalone", background_color: "#0f172a", theme_color: "#3b82f6", icons: [{ src: iconDataUrl, sizes: "512x512", type: "image/png", purpose: "any maskable" }] };   
+                const link = document.createElement('link'); link.rel = 'manifest'; link.href = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' })); document.head.appendChild(link);
+                
+                if ('serviceWorker' in navigator) {
+                    const swCode = `const CACHE_NAME='fin-dash-v6.3'; self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.add('${baseUrl}')))); self.addEventListener('fetch', e => { if(e.request.method !== 'GET') return; e.respondWith(caches.match(e.request).then(cached => cached || fetch(e.request).then(response => { if(!response || (response.status !== 200 && response.type !== 'opaque')) return response; const clone = response.clone(); caches.open(CACHE_NAME).then(c => c.put(e.request, clone)).catch(()=>{}); return response; }).catch(err=>console.warn('Network error')))); });`;
+                    navigator.serviceWorker.register(URL.createObjectURL(new Blob([swCode], { type: 'application/javascript' }))).catch(()=>{}); 
+                }
+            } catch(e) {}
+        })();
+    </script>
+</head>
+<body class="min-h-screen p-4 md:p-8 font-sans bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 relative overflow-x-hidden">
+
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-[300] flex flex-col gap-3 pointer-events-none w-80 max-w-[90vw]"></div>
+    <div id="globalLoader" class="fixed inset-0 z-[100] hidden bg-white/90 dark:bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center transition-opacity"><i class="fa-solid fa-cloud-arrow-up fa-bounce text-6xl text-blue-500 mb-6"></i><h2 class="text-2xl font-bold tracking-tight" id="globalLoaderText">Procesando...</h2></div>
+    <div id="globalDragOverlay" class="fixed inset-0 z-[200] hidden bg-blue-600/90 backdrop-blur-sm flex flex-col items-center justify-center text-white border-[12px] border-blue-400 border-dashed m-4 rounded-[3rem] transition-all"><i class="fa-solid fa-copy text-8xl mb-8 animate-bounce"></i><h2 class="text-5xl font-extrabold text-center px-4">Suelta tus archivos aquí</h2></div>
+
+    <div id="appContainer" class="max-w-[90rem] mx-auto">
+        <header class="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white transition-theme flex items-center">
+                    <i class="fa-solid fa-chart-pie text-blue-600 mr-3"></i> Analizador de Extractos Financieros <span class="ml-3 px-2 py-0.5 rounded text-xs bg-blue-600 text-white font-bold shadow-sm">v6.3 PWA</span>
+                </h1>
+                <div id="dateRangeDisplay" class="text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg shadow-sm hidden border border-blue-100 dark:border-blue-800 transition-theme mt-2 inline-flex items-center"></div>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+                <button id="installAppBtn" title="Instalar App" class="hidden px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all font-bold items-center gap-2 animate-bounce"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Instalar App</span></button>
+                <button id="updateDataBtn" title="Fusionar nuevos datos" class="px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-all font-semibold flex items-center gap-2 hidden"><i class="fa-solid fa-file-circle-plus"></i> <span class="hidden xl:inline">Actualizar</span></button>
+                <input type="file" id="updateFileInput" class="hidden" accept=".csv, .xlsx, .xls" multiple />
+                <button id="openDictionaryBtn" title="Editar Categorías" class="w-10 h-10 sm:w-auto sm:px-5 sm:py-2.5 rounded-full bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold flex items-center justify-center gap-2"><i class="fa-solid fa-tags text-blue-500"></i> <span class="hidden sm:inline">Categorías</span></button>
+                <button id="openVaultBtn" title="Almacén" class="w-10 h-10 sm:w-auto sm:px-5 sm:py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-md font-semibold flex items-center justify-center gap-2"><i class="fa-solid fa-database"></i> <span class="hidden sm:inline">Almacén</span></button>
+                <button id="exportImageBtn" title="Exportar Infografía PNG" class="w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-center"><i class="fa-solid fa-camera"></i></button>
+                <button id="incognitoToggle" title="Modo Incógnito" class="w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-center"><i class="fa-solid fa-eye" id="incognitoIcon"></i></button>
+                <button id="themeToggle" title="Cambiar Tema" class="w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-center"><i class="fa-solid fa-moon text-lg" id="themeIcon"></i></button>
+            </div>
+        </header>
+
+        <div id="dropZoneContainer" class="mt-20 max-w-3xl mx-auto">
+            <div class="border-4 border-dashed border-gray-300 dark:border-gray-600 rounded-3xl p-16 text-center bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 shadow-xl transition-all duration-300" id="dropZoneTrigger">
+                <i class="fa-solid fa-file-invoice-dollar text-7xl text-blue-500 mb-6 drop-shadow-md"></i>
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-3 transition-theme">Añade tus extractos bancarios</h2>   
+                <div class="text-gray-500 dark:text-gray-400 mb-10 text-lg transition-theme">Múltiples archivos soportados (.CSV, .XLSX, .XLS)<br></div>
+                <input type="file" id="fileInput" class="hidden" accept=".csv, .xlsx, .xls" multiple />
+                <button id="examinarBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-full shadow-lg text-lg transition-all hover:scale-105 active:scale-95">Examinar Archivos</button>
+            </div>
+        </div>
+
+        <div id="dashboard" class="hidden space-y-6 animate-fade-in pb-10">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="glass-panel transition-theme rounded-2xl p-6 border-l-[6px] border-blue-500 flex flex-col group hover:shadow-lg transition-shadow">
+                    <div class="flex items-center mb-2"><div class="p-3 bg-blue-100 dark:bg-blue-900/40 rounded-xl mr-4 group-hover:scale-110 transition-transform"><i class="fa-solid fa-wallet text-blue-600 dark:text-blue-400 text-xl"></i></div><div class="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest truncate">Gasto Total</div></div>
+                    <div class="text-3xl font-extrabold text-gray-800 dark:text-white tracking-tight blur-data truncate" id="kpiTotal">0,00 €</div>
+                    <div id="kpiTotalComp" class="text-xs mt-1.5 font-bold flex items-center transition-theme"><span class="text-gray-400">-</span></div>
+                </div>
+                
+                <div class="glass-panel transition-theme rounded-2xl p-6 border-l-[6px] border-purple-500 flex flex-col group hover:shadow-lg transition-shadow">
+                    <div class="flex items-center mb-2"><div class="p-3 bg-purple-100 dark:bg-purple-900/40 rounded-xl mr-4 group-hover:scale-110 transition-transform"><i class="fa-solid fa-hashtag text-purple-600 dark:text-purple-400 text-xl"></i></div><div class="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest truncate">Nº Transacciones</div></div>
+                    <div class="text-3xl font-extrabold text-gray-800 dark:text-white tracking-tight blur-data truncate" id="kpiTxCount">0</div>
+                    <div id="kpiTxComp" class="text-xs mt-1.5 font-bold flex items-center transition-theme"><span class="text-gray-400">-</span></div>
+                </div>
+                
+                <div class="glass-panel transition-theme rounded-2xl p-6 border-l-[6px] border-amber-500 flex flex-col group hover:shadow-lg transition-shadow">
+                    <div class="flex items-center mb-2"><div class="p-3 bg-amber-100 dark:bg-amber-900/40 rounded-xl mr-4 group-hover:scale-110 transition-transform"><i class="fa-solid fa-scale-balanced text-amber-600 dark:text-amber-400 text-xl"></i></div><div class="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest truncate">Promedio Diario</div></div>
+                    <div class="text-3xl font-extrabold text-gray-800 dark:text-white tracking-tight blur-data truncate" id="kpiAvg">0,00 €</div>
+                    <div id="kpiAvgComp" class="text-xs mt-1.5 font-bold flex items-center transition-theme"><span class="text-gray-400">-</span></div>
+                </div>
+
+                <div id="budgetCard" class="glass-panel transition-theme rounded-2xl p-5 border-l-[6px] border-emerald-500 flex flex-col justify-center relative group hover:shadow-lg transition-shadow">
+                    <div class="flex justify-between items-center mb-1"><div class="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest transition-theme">Presupuesto (<span id="budgetMonthLabel">Mes</span>)</div><button id="editBudgetBtn" title="Editar Límite" class="text-gray-400 hover:text-emerald-500 transition-colors"><i class="fa-solid fa-pen"></i></button></div>
+                    <div class="flex items-end gap-1.5 overflow-hidden"><div class="text-3xl font-extrabold text-gray-800 dark:text-white tracking-tight blur-data truncate" id="budgetSpent">0 €</div><div class="text-xs text-gray-500 dark:text-gray-400 font-bold mb-1.5 blur-data whitespace-nowrap">/ <span id="budgetLimitDisplay">1000 €</span></div></div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2 overflow-hidden relative"><div id="budgetProgress" class="bg-emerald-500 h-2 rounded-full transition-all duration-700" style="width: 0%"></div></div>
+                    <div id="budgetInputContainer" class="hidden absolute inset-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md rounded-2xl p-4 flex flex-col justify-center items-center z-10 border border-gray-200 dark:border-gray-700">
+                        <label class="text-xs font-bold text-gray-600 dark:text-gray-300 mb-2">Límite Mensual (€)</label>
+                        <input type="number" id="budgetInput" class="w-full text-center border border-gray-300 dark:border-gray-600 rounded-lg p-2 mb-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-bold" min="1" step="10">
+                        <div class="flex gap-2 w-full"><button id="cancelBudgetBtn" class="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg py-1.5 text-xs font-bold hover:bg-gray-200 transition-colors">Cancelar</button><button id="saveBudgetBtn" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg py-1.5 text-xs font-bold transition-colors">Guardar</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="glass-panel transition-theme rounded-2xl p-6 lg:col-span-2 flex flex-col h-full relative z-20">
+                    <div class="flex justify-between items-center mb-4 relative z-30">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 transition-theme"><i class="fa-solid fa-chart-column mr-2 text-gray-400"></i> Evolución Temporal</h3>
+                        <div class="relative" id="datePickerContainer">
+                            <div class="flex items-center gap-2">
+                                <button id="clearDateBtn" class="hidden text-gray-400 hover:text-red-500 transition-colors px-2 outline-none" title="Limpiar filtro"><i class="fa-solid fa-xmark"></i></button>
+                                <button id="openCalendarBtn" class="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <i class="fa-solid fa-calendar-day text-blue-500"></i> <span id="calendarBtnText">Rango de Fechas</span>
+                                </button>
+                            </div>
+                            <div id="calendarDropdown" class="absolute right-0 top-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-2xl w-[320px] hidden transition-theme origin-top-right overflow-hidden z-50">
+                                <div class="px-4 pt-4 pb-2 border-b border-gray-100 dark:border-gray-700/50 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50">
+                                    <div class="flex flex-col"><span class="text-[10px] uppercase font-bold text-gray-400">Gasto en vista</span><span class="text-sm font-extrabold text-gray-800 dark:text-gray-100" id="calTotalSpend">0,00 €</span></div>
+                                    <div class="flex bg-gray-200 dark:bg-gray-700 p-0.5 rounded-lg shadow-inner"><button id="viewMonthBtn" class="px-3 py-1 text-xs font-bold rounded-md bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm transition-all">Mes</button><button id="viewWeekBtn" class="px-3 py-1 text-xs font-bold rounded-md text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-all">Semana</button></div>
+                                </div>
+                                <div class="px-4 py-3 flex justify-between items-center relative">
+                                    <button id="calPrevBtn" class="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 flex items-center justify-center transition-colors"><i class="fa-solid fa-chevron-left"></i></button>
+                                    <button id="calQuickSelectBtn" class="font-bold text-gray-800 dark:text-white capitalize px-3 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-1.5"><span id="calMonthYear">Mes Año</span> <i class="fa-solid fa-caret-down text-[10px]"></i></button>
+                                    <button id="calNextBtn" class="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 flex items-center justify-center transition-colors"><i class="fa-solid fa-chevron-right"></i></button>
+                                </div>
+                                <div id="quickSelectPanel" class="hidden absolute inset-0 bg-white dark:bg-gray-800 z-10 p-4 flex flex-col h-full border-t border-gray-100 dark:border-gray-700"><div class="flex justify-between items-center mb-3"><span class="font-bold text-sm text-gray-800 dark:text-white">Selección rápida</span><button id="closeQuickSelectBtn" class="text-gray-400"><i class="fa-solid fa-xmark"></i></button></div><div class="grid grid-cols-3 gap-2 flex-1 overflow-y-auto scrollbar-thin" id="quickSelectGrid"></div></div>
+                                <div class="px-4 pb-4"><div class="grid grid-cols-7 gap-y-1 text-center text-xs font-bold text-gray-400 dark:text-gray-500 mb-2"><div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div></div><div id="calDaysGrid" class="grid grid-cols-7 gap-y-1 text-center text-sm font-medium"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-1 w-full min-h-[260px] relative"><canvas id="barChart"></canvas></div>
+                </div>
+
+                <div class="flex flex-col gap-6 lg:col-span-1 h-full z-10">
+                    <div class="glass-panel transition-theme rounded-2xl p-6 relative group flex flex-col">
+                        <div class="flex justify-between items-center mb-6"><h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 transition-theme"><i class="fa-solid fa-chart-pie mr-2 text-gray-400"></i> Distribución</h3></div>
+                        <div class="absolute top-6 right-6 text-xs text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-900/50 px-2.5 py-1 rounded-full animate-pulse opacity-0 group-hover:opacity-100 transition-opacity flex items-center border border-blue-200 dark:border-blue-800 z-10 pointer-events-none"><i class="fa-solid fa-hand-pointer mr-1.5"></i> Desglose</div>
+                        <div class="h-56 relative"><canvas id="doughnutChart"></canvas></div>
+                    </div>
+                    <div class="glass-panel transition-theme rounded-2xl p-6 flex flex-col flex-1 min-h-0">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 transition-theme mb-3 border-b border-gray-200 dark:border-gray-700 pb-2"><i class="fa-solid fa-store mr-2 text-gray-400"></i> Top Comercios</h3>
+                        <div id="topComerciosList" class="flex flex-col gap-2 flex-1 overflow-y-auto scrollbar-thin"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="glass-panel transition-theme rounded-2xl p-0 lg:col-span-2 flex flex-col h-[40rem] overflow-hidden">
+                    <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50 dark:bg-gray-800/30 transition-theme">
+                        <div><h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 transition-theme"><i class="fa-solid fa-receipt mr-2 text-gray-400"></i> Movimientos Registrados</h3><p id="tableCountInfo" class="text-xs font-semibold text-blue-600 dark:text-blue-400 mt-1 hidden"></p></div>
+                        <div class="flex gap-3 w-full sm:w-auto">
+                            <div class="relative w-full sm:w-72"><input type="text" id="tableSearch" placeholder="Buscar... (Usa Ctrl+F)" class="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-theme"><i class="fa-solid fa-magnifying-glass absolute left-3.5 top-2.5 text-gray-400 text-sm pointer-events-none"></i><button id="clearSearchBtn" class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hidden focus:outline-none"><i class="fa-solid fa-xmark"></i></button></div>
+                            <button id="exportCsvBtn" title="Exportar vista actual a CSV" class="p-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center shadow-sm whitespace-nowrap"><i class="fa-solid fa-file-csv sm:mr-2"></i> <span class="hidden sm:inline">Exportar CSV</span></button>
+                        </div>
+                    </div>
+                    <div class="overflow-y-auto flex-1 scrollbar-thin relative bg-white dark:bg-gray-800/20">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 transition-theme relative">
+                            <thead class="bg-gray-50/95 dark:bg-gray-800/95 backdrop-blur sticky top-0 z-10 shadow-sm font-bold transition-theme">
+                                <tr><th class="px-6 py-3 text-left text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th><th class="px-6 py-3 text-left text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Concepto (Original)</th><th class="px-6 py-3 text-left text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Categoría</th><th class="px-6 py-3 text-right text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Importe</th></tr>
+                            </thead>
+                            <tbody id="transactionsTable" class="divide-y divide-gray-100 dark:divide-gray-800/50 transition-theme"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="glass-panel transition-theme rounded-2xl p-6 h-[40rem] flex flex-col">
+                    <h3 class="text-lg font-bold mb-6 text-gray-800 dark:text-gray-100 transition-theme flex items-center border-b border-gray-200 dark:border-gray-700 pb-4"><i class="fa-solid fa-sliders mr-2 text-gray-400"></i> Filtros Base</h3>
+                    <div class="flex-1 overflow-y-auto pr-2 scrollbar-thin">
+                        <div class="mb-6"><label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 transition-theme"><i class="fa-regular fa-calendar text-blue-500 mr-1.5"></i> Año</label><select id="yearFilter" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-sm transition-theme cursor-pointer font-semibold"><option value="all">Todos los años</option></select></div>
+                        <div class="mb-6"><label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 transition-theme"><i class="fa-solid fa-filter text-purple-500 mr-1.5"></i> Categoría</label><select id="categoryFilter" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-sm transition-theme cursor-pointer font-semibold"><option value="all">Todas las categorías</option></select></div>
+                        <div class="mt-8">
+                            <div class="flex justify-between items-center mb-3"><h4 class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 transition-theme flex items-center"><i class="fa-solid fa-book-bookmark mr-2"></i> Diccionario Analítico</h4></div>
+                            <div class="space-y-1 text-xs bg-gray-50/50 dark:bg-gray-900/30 p-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-inner h-48 overflow-y-auto scrollbar-thin transition-theme" id="rulesList"></div>
+                        </div>
+                    </div>
+                    <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 transition-theme">
+                        <button id="resetBtn" class="w-full text-center text-sm text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 font-bold px-4 py-3 rounded-xl transition-colors flex items-center justify-center border border-transparent border-dashed hover:border-red-200 dark:hover:border-red-800"><i class="fa-solid fa-power-off mr-2"></i> Cerrar Sesión</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALES -->
+    <div id="vaultModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-gray-900/70 backdrop-blur-md transition-opacity opacity-0"><div class="bg-white dark:bg-gray-800 w-11/12 max-w-3xl rounded-3xl shadow-2xl flex flex-col max-h-[85vh] transition-transform scale-95 border border-gray-200 dark:border-gray-700"><div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/80 rounded-t-3xl"><div class="flex items-center gap-4"><h3 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center"><i class="fa-solid fa-database text-blue-500 mr-3"></i> Mi Almacén </h3><span id="storageStatusBadge" class="px-3 py-1 text-xs font-bold rounded-lg bg-green-100 text-green-700 border border-green-200 shadow-sm hidden">Modo Local</span></div><div class="flex items-center gap-2"><button id="deleteAllVaultBtn" class="text-red-500 hover:text-red-700 dark:hover:text-red-400 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors" title="Borrar todo"><i class="fa-solid fa-trash-can text-xl"></i></button><button id="closeVaultBtn" class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button></div></div><div class="p-0 flex-1 overflow-y-auto scrollbar-thin bg-white dark:bg-gray-800"><ul id="vaultList" class="divide-y divide-gray-100 dark:divide-gray-700/50"><li class="p-12 text-center text-gray-500 italic">Cargando tu historial...</li></ul></div></div></div>
+    
+    <div id="dictionaryModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-gray-900/70 backdrop-blur-md transition-opacity opacity-0"><div class="bg-white dark:bg-gray-800 w-11/12 max-w-4xl rounded-3xl shadow-2xl flex flex-col max-h-[85vh] transition-transform scale-95 border border-gray-200 dark:border-gray-700"><div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/80 rounded-t-3xl"><h3 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center"><i class="fa-solid fa-tags text-blue-500 mr-3"></i> Editor de Categorías</h3><button id="closeDictionaryBtn" class="text-gray-400 hover:text-gray-700 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button></div><div class="p-6 flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900/20"><div class="mb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"><p class="text-sm text-gray-500 dark:text-gray-400 max-w-xl">Reglas analíticas por palabra clave. <span class="italic text-xs opacity-80 mt-1 block">El orden importa: las superiores tienen prioridad.</span></p><button id="addRuleBtn" class="px-4 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-400 rounded-xl text-sm font-bold transition-colors shadow-sm"><i class="fa-solid fa-plus mr-1"></i> Nueva Regla</button></div><div id="dictionaryRulesContainer" class="space-y-3"></div></div><div class="p-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 rounded-b-3xl flex flex-col sm:flex-row justify-end gap-3"><button id="restoreDefaultDictBtn" class="px-5 py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 font-bold rounded-xl text-sm transition-colors sm:mr-auto"><i class="fa-solid fa-rotate-left mr-1.5"></i> Restaurar Originales</button><button id="cancelDictionaryBtn" class="px-5 py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 font-bold rounded-xl text-sm transition-colors">Cancelar</button><button id="saveDictionaryBtn" class="px-5 py-2.5 bg-blue-600 text-white hover:bg-blue-700 font-bold rounded-xl text-sm shadow-md transition-transform hover:scale-105 active:scale-95">Guardar y Aplicar</button></div></div></div>
+    
+    <div id="drilldownModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-gray-900/70 backdrop-blur-md transition-opacity opacity-0">
+        <div class="bg-white dark:bg-gray-800 w-11/12 max-w-5xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh] transition-transform scale-95 border border-gray-200 dark:border-gray-700">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/80 rounded-t-3xl">
+                <h3 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center"><i class="fa-solid fa-microscope text-blue-500 mr-3"></i> Análisis: <span id="drilldownTitle" class="ml-2 px-3 py-1 rounded-lg text-lg bg-white dark:bg-gray-700 shadow-sm font-extrabold uppercase"></span></h3>
+                <button id="closeModalBtn" class="text-gray-400 hover:text-gray-700 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-6 flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                        <h4 class="text-sm font-bold text-gray-500 dark:text-gray-400 mb-4 uppercase tracking-wider">Desglose de Conceptos</h4>
+                        <div class="h-[22rem] relative"><canvas id="drilldownChart"></canvas></div>
+                    </div>
+                    <div class="space-y-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-2xl border border-blue-100 dark:border-blue-800/50">
+                                <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase block mb-1">Gasto Total</span>
+                                <span class="text-2xl font-extrabold text-gray-900 dark:text-white blur-data" id="ddTotalAmount">0 €</span>
+                                <span class="text-xs font-semibold text-gray-500 block mt-1 blur-data" id="ddTotalPct">0% del periodo</span>
+                            </div>
+                            <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-2xl border border-purple-100 dark:border-purple-800/50">
+                                <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase block mb-1">Promedio Mensual</span>
+                                <span class="text-2xl font-extrabold text-gray-900 dark:text-white blur-data" id="ddAvgAmount">0 €</span>
+                                <span class="text-xs font-semibold text-gray-500 block mt-1 blur-data" id="ddMaxMonth">Max: -</span>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                            <h4 class="text-sm font-bold text-gray-500 dark:text-gray-400 mb-4 uppercase tracking-wider">Top 3 Comercios</h4>
+                            <div id="ddTopMerchants" class="space-y-3"></div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                            <h4 class="text-sm font-bold text-gray-500 dark:text-gray-400 mb-4 uppercase tracking-wider">Tendencia Mensual</h4>
+                            <div class="h-32 relative"><canvas id="drilldownTrendChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT DE LOGICA (PURO) -->
+    <script>
+        // GLOBALS & STATE
+        let monthlyBudget = 1000;
+        try { const m = localStorage.getItem('monthlyBudget'); if(m && !isNaN(m)) monthlyBudget = parseFloat(m); } catch(e){}
+        
+        let allTransactions = [], filteredTransactions = [], currentlyDisplayedTableData = [], chartInstances = {}, currentFileName = "";
+        let editingRules = [], selectedStartDate = null, selectedEndDate = null, currentCalDate = new Date(), hoverDate = null, calendarViewMode = 'month';
+        window.currentOtrosCategories = [];
+
+        // ==========================================
+        // FORMAT UTILITIES
+        // ==========================================
+        function formatCur(val) {
+            if(isNaN(val) || val === null || val === undefined) return '0,00 €';
+            return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+        }
+        function formatComp(val) {
+            if(isNaN(val) || val === null || val === undefined) return '0';
+            if(Math.abs(val) >= 1000) return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(val / 1000) + 'k';
+            return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(val);
+        }
+
+        const defaultCategoryRules = [
+            { keywords: ['AMZN', 'AMAZON', 'AMZ', 'PAYPAL', 'PAYPAL *', 'PAYPAL*', 'ALIEXPRESS', 'MIRAVIA', 'SHEIN', 'ZALANDO'], category: 'Compras Online', color: '#3b82f6', emoji: '🛍️' },
+            { keywords: ['MERCADONA', 'MERCAT', 'LIDL', 'ALDI', 'CARREFOUR', 'DIA ', 'ALCAMPO', 'CONSUM', 'EROSKI'], category: 'Supermercado', color: '#10b981', emoji: '🛒' },
+            { keywords: ['UBER EATS', 'UBEREATS', 'UBER*EATS', 'GLOVO', 'JUST EAT', 'DELIVEROO'], category: 'Delivery', color: '#f97316', emoji: '🍔' },
+            { keywords: ['APPLE.COM', 'APPLE STORE', 'ITUNES', 'MAC STORE', 'PCCOMPONENTES', 'MEDIAMARKT'], category: 'Tecnología', color: '#64748b', emoji: '💻' },
+            { keywords: ['GOOGLE*', 'GOOGLE PLAY', 'YOUTUBE', 'NETFLIX', 'NETFLIX.COM', 'SPOTIFY', 'SPOTIFY AB', 'HBO', 'DISNEY', 'PRIME VIDEO', 'APPLE', 'ICLOUD'], category: 'Suscripciones', color: '#ec4899', emoji: '📺' },
+            { keywords: ['BIZUM', 'TRANSFERENCIA ENVIADA'], category: 'Transferencias', color: '#8b5cf6', emoji: '💸' },
+            { keywords: ['REPSOL', 'BP ', 'CEPSA', 'GALP', 'SHELL', 'GASOLINERA', 'PETRONOR'], category: 'Gasolinera', color: '#eab308', emoji: '🚗' },
+            { keywords: ['ZARA', 'H&M', 'MANGO', 'PULL&BEAR', 'BERSHKA', 'STRADIVARIUS', 'PRIMARK', 'ASOS', 'UNIQLO'], category: 'Ropa', color: '#06b6d4', emoji: '👕' },
+            { keywords: ['CORREOS', 'SEUR', 'MRW', 'GLS ', 'DHL', 'UPS '], category: 'Paquetería', color: '#d946ef', emoji: '📦' },
+            { keywords: ['CLINICA', 'FARMACIA', 'FCIA ', 'DENTISTA', 'OPTICA', 'MEDICO', 'SANITAS', 'ADESLAS', 'SEGURO MEDICO'], category: 'Salud', color: '#ef4444', emoji: '💊' },
+            { keywords: ['BAR ', 'CAFE ', 'CAFETERIA', 'RESTAURANTE', 'MCDONALDS', 'BURGER KING', 'KFC', 'DOMINOS', 'TELEPIZZA', 'PIZZA', 'BURGER'], category: 'Restauración', color: '#f59e0b', emoji: '🍽️' },
+            { keywords: ['RENFE', 'ALSA', 'BLABLACAR', 'EMT ', 'METRO ', 'CABIFY', 'UBER ', 'PARKING'], category: 'Transporte', color: '#14b8a6', emoji: '🚆' },
+            { keywords: ['GYM', 'GIMNASIO', 'DECATHLON', 'FITNESS', 'NIKE', 'ADIDAS'], category: 'Deporte', color: '#84cc16', emoji: '🏋️' },
+            { keywords: ['STEAM', 'PLAYSTATION', 'XBOX', 'NINTENDO', 'EPIC GAMES', 'BLIZZARD', 'GAME'], category: 'Gaming', color: '#6366f1', emoji: '🎮' },
+            { keywords: ['IKEA', 'LEROY MERLIN', 'BRICODEPOT', 'LEROY', 'ALQUILER', 'HIPOTECA', 'COMUNIDAD'], category: 'Hogar', color: '#a855f7', emoji: '🏠' },
+            { keywords: ['MOVISTAR', 'VODAFONE', 'ORANGE', 'DIGI', 'YOIGO', 'IBERDROLA', 'ENDESA', 'NATURGY', 'AGUA ', 'JAZZTEL', 'MASMOVIL'], category: 'Facturas Hogar / Tlf', color: '#0d9488', emoji: '📱' },
+            { keywords: ['CAJERO', 'RETIRADA EFECTIVO'], category: 'Retirada Cajero', color: '#78716c', emoji: '🏧' },
+            { keywords: ['ACADEMIA', 'UNIVERSIDAD', 'CURSO', 'LIBRO'], category: 'Educación', color: '#f43f5e', emoji: '🎓' },
+            { keywords: ['HOTEL', 'VUELO', 'AIRBNB', 'BOOKING', 'RENTALCARS', 'RYANAIR', 'IBERIA', 'VUELING'], category: 'Viajes', color: '#0ea5e9', emoji: '✈️' },
+            { keywords: ['VETERINARIO', 'TIENDA ANIMALES', 'PIENSO', 'KIWOKO', 'TIENDANIMAL'], category: 'Mascotas', color: '#d97706', emoji: '🐾' }
+        ];
+        
+        let categoryRules = [];
+        try { const stored = localStorage.getItem('customCategoryRules'); categoryRules = stored ? JSON.parse(stored) : JSON.parse(JSON.stringify(defaultCategoryRules)); } 
+        catch(e) { categoryRules = JSON.parse(JSON.stringify(defaultCategoryRules)); }
+        const defaultCategoryColor = '#9ca3af', drilldownPalette = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f43f5e', '#14b8a6', '#eab308', '#6366f1'];
+
+        // DATABASE LOCAL ONLY
+        const DB_NAME = 'FinDashboardDB'; const STORE_NAME = 'bank_files'; let localDB = null;   
+        function initLocalDB() { return new Promise((res, rej) => { const req = indexedDB.open(DB_NAME, 1); req.onupgradeneeded = e => { if (!e.target.result.objectStoreNames.contains(STORE_NAME)) e.target.result.createObjectStore(STORE_NAME, { keyPath: 'id' }); }; req.onsuccess = e => { localDB = e.target.result; res(); }; req.onerror = e => rej(e.target.error); req.onblocked = e => { window.showToast("Cierra otras pestañas para actualizar la BD.", "warning"); }; }); }
+        async function saveToLocalDB(id, fileName, dataJson) { return new Promise((res, rej) => { const tx = localDB.transaction(STORE_NAME, 'readwrite'); tx.objectStore(STORE_NAME).put({ id, fileName, uploadDate: new Date().toISOString(), data: dataJson }); tx.oncomplete = res; tx.onerror = rej; }); }
+        async function getLocalDBFiles() { return new Promise((res, rej) => { const tx = localDB.transaction(STORE_NAME, 'readonly'); const req = tx.objectStore(STORE_NAME).getAll(); req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); }); }
+        async function deleteLocalDBFile(id) { return new Promise((res, rej) => { const tx = localDB.transaction(STORE_NAME, 'readwrite'); tx.objectStore(STORE_NAME).delete(id); tx.oncomplete = res; tx.onerror = rej; }); }
+
+        let savedFiles = [];
+
+        async function initStorage() {
+            const badge = document.getElementById('storageStatusBadge');
+            if(badge) badge.classList.remove('hidden'); 
+            try { await initLocalDB(); refreshLocalVault(); } catch (e) { console.error(e); }
+        }
+        initStorage();
+
+        async function saveFileToStorage(jsonData, forceFilename = null) {
+            const newDocId = 'file_' + Date.now(); const fName = forceFilename || currentFileName;
+            await saveToLocalDB(newDocId, fName, jsonData); refreshLocalVault();
+        }
+
+        async function deleteFileFromStorage(id, silent = false) {
+            if (localDB) { await deleteLocalDBFile(id); if (!silent) refreshLocalVault(); }
+            if (!silent) window.showToast("Archivo eliminado del almacén.", "success");
+        }
+
+        async function refreshLocalVault() { if (!localDB) return; savedFiles = await getLocalDBFiles(); savedFiles.sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate)); renderVaultList(); }
+
+        function renderVaultList() {
+            const list = document.getElementById('vaultList');
+            if (!list) return;
+            if (!savedFiles.length) { list.innerHTML = `<li class="p-10 text-center text-gray-500 italic">Almacén vacío. Arrastra un archivo para guardarlo aquí.</li>`; return; }
+            list.innerHTML = savedFiles.map(f => {
+                const dateObj = new Date(f.uploadDate); let txCount = 0; try { txCount = JSON.parse(f.data).length; } catch(e){}
+                return `<li class="p-5 hover:bg-blue-50/50 dark:hover:bg-gray-700/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-colors border-b border-gray-100 dark:border-gray-700/50"><div class="flex items-center"><div class="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 mr-5 flex justify-center items-center shadow-sm"><i class="fa-solid fa-file-excel text-xl"></i></div><div><h4 class="font-bold text-gray-800 dark:text-white text-lg">${f.fileName}</h4><p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5"><i class="fa-regular fa-calendar-plus mr-1"></i> ${dateObj.toLocaleDateString()} a las ${dateObj.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'})} <span class="mx-2">•</span> <span class="font-semibold text-gray-600 dark:text-gray-300">${txCount} registros</span></p></div></div><div class="flex gap-3 w-full sm:w-auto"><button class="load-file-btn px-6 py-2.5 bg-blue-600 text-white hover:bg-blue-700 font-bold rounded-xl text-sm shadow-md transition-transform hover:scale-105 active:scale-95 flex items-center justify-center flex-1" data-id="${f.id}"><i class="fa-solid fa-folder-open mr-2"></i> Cargar</button><button class="delete-file-btn px-4 py-2.5 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800/50 font-bold rounded-xl text-sm transition-colors flex items-center justify-center" data-id="${f.id}" title="Eliminar archivo"><i class="fa-solid fa-trash-can pointer-events-none"></i></button></div></li>`;
+            }).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const vaultList = document.getElementById('vaultList');
+            if(vaultList) {
+                vaultList.addEventListener('click', async (e) => {
+                    if(e.target.closest('.load-file-btn')) {
+                        const id = e.target.closest('.load-file-btn').getAttribute('data-id');
+                        const foundFile = savedFiles.find(x => x.id === id); 
+                        if(!foundFile) return; showLoader("Cargando archivo guardado..."); closeModal(document.getElementById('vaultModal')); 
+                        setTimeout(() => { currentFileName = foundFile.fileName; buildDashboardModel(JSON.parse(foundFile.data)); window.showToast("Datos recuperados con éxito.", "success"); hideLoader(); }, 600);
+                    } else if(e.target.closest('.delete-file-btn')) {
+                        const id = e.target.closest('.delete-file-btn').getAttribute('data-id');
+                        const isConfirmed = await window.showConfirmToast("¿Eliminar permanentemente?"); 
+                        if(isConfirmed) await deleteFileFromStorage(id);
+                    }
+                });
+            }
+
+            let dragCounter = 0;
+            document.addEventListener('dragenter', e => { e.preventDefault(); dragCounter++; const over = document.getElementById('globalDragOverlay'); if(over){ over.classList.remove('hidden'); over.classList.add('flex'); }});
+            document.addEventListener('dragleave', e => { e.preventDefault(); dragCounter--; const over = document.getElementById('globalDragOverlay'); if (dragCounter === 0 && over) { over.classList.add('hidden'); over.classList.remove('flex'); } });
+            document.addEventListener('dragover', e => e.preventDefault());
+            document.addEventListener('drop', e => { e.preventDefault(); dragCounter = 0; const over = document.getElementById('globalDragOverlay'); if(over){ over.classList.add('hidden'); over.classList.remove('flex'); } if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+            const fileInp = document.getElementById('fileInput'); if(fileInp) fileInp.addEventListener('change', e => { if(e.target.files.length) handleFiles(e.target.files); e.target.value = ''; });
+            const upFileInp = document.getElementById('updateFileInput'); if(upFileInp) upFileInp.addEventListener('change', e => { if(e.target.files.length) handleFiles(e.target.files); e.target.value = ''; });
+
+            // Activar fileInput al hacer clic en la drop zone o en el botón Examinar
+            const dropZoneTrigger = document.getElementById('dropZoneTrigger');
+            if(dropZoneTrigger) dropZoneTrigger.addEventListener('click', () => { if(fileInp) fileInp.click(); });
+            const examinarBtn = document.getElementById('examinarBtn');
+            if(examinarBtn) examinarBtn.addEventListener('click', e => { e.stopPropagation(); if(fileInp) fileInp.click(); });
+
+            // Botón Actualizar Datos
+            const updateBtn = document.getElementById('updateDataBtn');
+            if(updateBtn) updateBtn.addEventListener('click', () => { if(upFileInp) upFileInp.click(); });
+            
+            // Atajos
+            document.addEventListener('keydown', e => {
+                if ((e.ctrlKey && e.key.toLowerCase() === 'f') || (e.key === '/' && document.activeElement.tagName !== 'INPUT')) { e.preventDefault(); const tSearch = document.getElementById('tableSearch'); if(tSearch) tSearch.focus(); }
+                if (e.key === 'Escape') {
+                    const tSearch = document.getElementById('tableSearch'), clearBtn = document.getElementById('clearSearchBtn');
+                    if (document.activeElement === tSearch || (tSearch && tSearch.value.length > 0)) { tSearch.value = ''; if(clearBtn) clearBtn.classList.add('hidden'); updateTableOnly(); tSearch.blur(); }
+                    const bCont = document.getElementById('budgetInputContainer'), bInp = document.getElementById('budgetInput');
+                    if (bCont && !bCont.classList.contains('hidden')) { bInp.value = monthlyBudget; bCont.classList.add('hidden'); }
+                    const vModal = document.getElementById('vaultModal'), dModal = document.getElementById('drilldownModal'), dictModal = document.getElementById('dictionaryModal'), cDrop = document.getElementById('calendarDropdown');
+                    if (vModal && !vModal.classList.contains('hidden')) closeModal(vModal);
+                    if (dModal && !dModal.classList.contains('hidden')) closeModal(dModal);
+                    if (dictModal && !dictModal.classList.contains('hidden')) closeModal(dictModal);
+                    if (cDrop && !cDrop.classList.contains('hidden')) cDrop.classList.add('hidden');
+                }
+            });
+        });
+
+        // ==========================================
+        // 9. PARSEO SEGURO DE ARCHIVOS
+        // ==========================================
+        function parseBankDate(val) {
+            if (val instanceof Date) return val; let s = String(val).replace(/["']/g, '').trim().split(' ')[0];
+            if (s.includes('/')) { let p = s.split('/'); if (p[2] && p[2].length === 4) return new Date(p[2], parseInt(p[1]) - 1, p[0]); if (p[0] && p[0].length === 4) return new Date(p[0], parseInt(p[1]) - 1, p[2]); }
+            if (s.includes('-')) { let p = s.split('-'); if (p[2] && p[2].length === 4) return new Date(p[2], parseInt(p[1]) - 1, p[0]); }
+            return new Date(s);
+        }
+
+        function extractDataFromRaw(data, fileName) {
+            let headerRowIndex = -1, dateColIndex = -1, descColIndex = -1, amountColIndex = -1, extractedData = [];
+            
+            for (let i = 0; i < Math.min(50, data.length) && headerRowIndex === -1; i++) {
+                if (!Array.isArray(data[i])) continue;
+                const rStr = data[i].map(c => String(c).toLowerCase());
+                const dIdx = rStr.findIndex(c => c.match(/fecha|f\.?\s*valor|operación/)), aIdx = rStr.findIndex(c => c.match(/importe|cantidad/)), cIdx = rStr.findIndex(c => c.match(/concepto|movimiento|detalle|observaciones/));
+                if (dIdx !== -1 && aIdx !== -1) { headerRowIndex = i; dateColIndex = dIdx; amountColIndex = aIdx; descColIndex = (cIdx !== -1) ? cIdx : (dIdx + 1); }
+            }
+            if (headerRowIndex === -1) {
+                for (let i = 0; i < Math.min(50, data.length) && headerRowIndex === -1; i++) {
+                    const row = data[i];
+                    if (Array.isArray(row) && row.length >= 3) {
+                        const isDate = c => c instanceof Date || (typeof c === 'string' && (/^\d{2}[\/\-]\d{2}[\/\-]\d{2,4}/.test(c) || /^\d{4}[\/\-]\d{2}[\/\-]\d{2}/.test(c))), isMoney = c => typeof c === 'number' || (typeof c === 'string' && /^-?\d+[.,]\d{2}$/.test(c));
+                        if (row.some(isDate) && row.some(isMoney)) { headerRowIndex = i - 1; dateColIndex = row.findIndex(isDate); amountColIndex = row.findIndex(isMoney); descColIndex = (dateColIndex + 1 !== amountColIndex) ? dateColIndex + 1 : dateColIndex + 2; }
+                    }
+                }
+            }
+            if (headerRowIndex === -1) return { error: "Columnas no detectadas en " + fileName };
+
+            for (let i = headerRowIndex + 1; i < data.length; i++) {
+                const row = data[i]; if (!row || row[dateColIndex] === undefined || row[amountColIndex] === undefined) continue;
+                let dateRaw = row[dateColIndex], descStr = String(row[descColIndex] || "").toUpperCase().trim().replace(/\s+/g, ' '), amountRaw = row[amountColIndex];
+                if (descStr === 'TARJETA' || descStr === '') continue;
+                let dateObj = parseBankDate(dateRaw); if (!dateObj || isNaN(dateObj.getTime()) || dateObj.getFullYear() < 2000) continue;
+                let cleanAmountStr = String(amountRaw).replace(/[\s\xA0]/g, '').replace(/[^0-9,.\-]/g, ''), amount = typeof amountRaw === 'number' ? amountRaw : parseFloat((as => as.includes(',') && (!as.includes('.') || as.indexOf(',') > as.lastIndexOf('.')) ? as.replace(/\./g, '').replace(',', '.') : as)(cleanAmountStr));
+                if (isNaN(amount) || amount >= -0.01) continue; 
+                extractedData.push({ d: dateObj.getTime(), c: descStr, a: Math.abs(amount) });
+            }
+            return extractedData;
+        }
+
+        function processAndMergeFiles(files) {
+            if (!files.length) return; showLoader("Fusionando con datos actuales...");
+            const filePromises = Array.from(files).map(file => {
+                return new Promise((resolve) => {
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    if (!['csv', 'xlsx', 'xls'].includes(ext)) { resolve({ error: `Extensión no admitida: ${file.name}` }); return; }
+                    if (['xlsx', 'xls'].includes(ext)) {
+                        const reader = new FileReader();
+                        reader.onload = e => { try { resolve(extractDataFromRaw(XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(e.target.result), {type: 'array', cellDates: true}).Sheets[XLSX.read(new Uint8Array(e.target.result), {type: 'array', cellDates: true}).SheetNames[0]], {header: 1, defval: ""}), file.name)); } catch (err) { resolve({ error: `Error leyendo ${file.name}` }); } };
+                        reader.readAsArrayBuffer(file);
+                    } else if (ext === 'csv') {
+                        const reader = new FileReader(); reader.onload = e => Papa.parse(e.target.result, { header: false, skipEmptyLines: 'greedy', complete: res => resolve(extractDataFromRaw(res.data, file.name)) }); reader.readAsText(file, 'ISO-8859-1');
+                    }
+                });
+            });
+
+            Promise.all(filePromises).then(async results => {
+                const errors = results.filter(r => r.error); if (errors.length) window.showToast(`${errors.length} archivo(s) no se procesaron.`, 'warning');
+                const validDataArrays = results.filter(r => Array.isArray(r)); if (!validDataArrays.length) { window.showToast("No se encontraron transacciones válidas.", "error"); hideLoader(); return; }
+
+                const newRawData = validDataArrays.flat(), existingRawData = allTransactions.map(tx => ({d: tx.timestamp, c: tx.description, a: tx.amount}));
+                const seenKeys = new Set(existingRawData.map(tx => `${tx.d}_${tx.a.toFixed(2)}_${tx.c}`)), combinedRawData = [...existingRawData];
+                let addedCount = 0, ignoredCount = 0;
+                newRawData.forEach(tx => { const key = `${tx.d}_${tx.a.toFixed(2)}_${tx.c}`; if (!seenKeys.has(key)) { seenKeys.add(key); combinedRawData.push(tx); addedCount++; } else { ignoredCount++; } });
+
+                if (addedCount > 0) {
+                    currentFileName = "Dataset Combinado"; document.getElementById('globalLoaderText').innerText = "Guardando en almacén...";
+                    await saveFileToStorage(JSON.stringify(combinedRawData), `Dataset_${new Date().toISOString().slice(0,10)}`);
+                    hideLoader(); buildDashboardModel(combinedRawData); window.showToast(`¡Fusión exitosa! ${addedCount} añadidas. (${ignoredCount} duplicados).`, "success");
+                } else { hideLoader(); window.showToast(`No hay datos nuevos. Se ignoraron ${ignoredCount} duplicados.`, "info"); }
+            });
+        }
+        
+        function handleFiles(files) { processAndMergeFiles(files); }
+
+        // ==========================================
+        // 10. CORE DASHBOARD
+        // ==========================================
+        function buildDashboardModel(rawData) {
+            allTransactions = [];
+            rawData.forEach(item => {
+                const dateObj = new Date(item.d);
+                allTransactions.push({ timestamp: item.d, dateObj, dateFormatted: dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }), year: dateObj.getFullYear(), sortKey: dateObj.getFullYear() * 100 + (dateObj.getMonth() + 1), monthYearLabel: new Intl.DateTimeFormat('es-ES', { month: 'short', year: '2-digit' }).format(dateObj), description: item.c, amount: item.a });
+            });
+            allTransactions.sort((a, b) => b.timestamp - a.timestamp);
+            applyCategorization(allTransactions, categoryRules);
+
+            const dZone = document.getElementById('dropZoneContainer'), dBoard = document.getElementById('dashboard'), upBtn = document.getElementById('updateDataBtn'), yFilt = document.getElementById('yearFilter'), cFilt = document.getElementById('categoryFilter'), drDisp = document.getElementById('dateRangeDisplay');
+            if(dZone) dZone.classList.add('hidden'); 
+            if(dBoard) dBoard.classList.remove('hidden'); 
+            if(upBtn) upBtn.classList.remove('hidden');
+            
+            if(yFilt) {
+                yFilt.innerHTML = '<option value="all">Todos los años históricos</option>' + [...new Set(allTransactions.map(t => t.year))].sort((a, b) => b - a).map(y => `<option value="${y}">Año ${y}</option>`).join('');
+                const savedYear = localStorage.getItem('filterYear'); if(savedYear && [...yFilt.options].some(o => o.value === savedYear)) yFilt.value = savedYear;
+            }
+            if(cFilt) {
+                const currentCatFilter = cFilt.value; const cats = [...new Set(allTransactions.map(t => t.category))].sort();
+                cFilt.innerHTML = '<option value="all">Todas las categorías</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+                const savedCat = localStorage.getItem('filterCat') || currentCatFilter; if(savedCat && [...cFilt.options].some(o => o.value === savedCat)) cFilt.value = savedCat;
+            }
+
+            if(drDisp && allTransactions.length > 0) {
+                const minD = new Date(Math.min(...allTransactions.map(t => t.timestamp))), maxD = new Date(Math.max(...allTransactions.map(t => t.timestamp)));
+                drDisp.innerHTML = `<i class="fa-regular fa-calendar-days mr-2 text-blue-500"></i><b class="mr-2">Datos:</b> <span class="text-blue-800 dark:text-blue-200 font-extrabold tracking-tight">${minD.toLocaleDateString('es-ES', {day: '2-digit', month: '2-digit', year: 'numeric'})} &mdash; ${maxD.toLocaleDateString('es-ES', {day: '2-digit', month: '2-digit', year: 'numeric'})}</span>`;
+                drDisp.classList.remove('hidden'); 
+            }
+            const tSearch = document.getElementById('tableSearch'), clearBtn = document.getElementById('clearSearchBtn');
+            if(tSearch) tSearch.value = ''; if(clearBtn) clearBtn.classList.add('hidden');
+            selectedStartDate = null; selectedEndDate = null; updateCalendarUI(); updateDashboard();
+        }
+
+        function updateDashboard() {
+            const yFilt = document.getElementById('yearFilter'), cFilt = document.getElementById('categoryFilter');
+            const sy = yFilt ? yFilt.value : 'all', sc = cFilt ? cFilt.value : 'all';
+            localStorage.setItem('filterYear', sy); localStorage.setItem('filterCat', sc);
+
+            let currMinTime = Infinity, currMaxTime = -Infinity;
+            const startLimit = selectedStartDate ? selectedStartDate.getTime() : null;
+            const endLimit = selectedEndDate ? selectedEndDate.getTime() + 86399999 : (startLimit ? startLimit + 86399999 : null);
+
+            filteredTransactions = allTransactions.filter(t => {
+                const passYear = sy === 'all' || t.year.toString() === sy, passCat = sc === 'all' || t.category === sc; let passDate = true;
+                if (startLimit && endLimit) passDate = t.timestamp >= startLimit && t.timestamp <= endLimit;
+                if (passYear && passCat && passDate) { if (t.timestamp < currMinTime) currMinTime = t.timestamp; if (t.timestamp > currMaxTime) currMaxTime = t.timestamp; return true; } return false;
+            });
+            
+            const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.amount, 0), txCount = filteredTransactions.length;
+            animateValue(document.getElementById('kpiTotal'), totalAmount, true);
+            animateValue(document.getElementById('kpiTxCount'), txCount, false);
+
+            let currentDays = 1;
+            if (startLimit) { currentDays = Math.max(1, (endLimit - startLimit) / (1000*60*60*24)); } 
+            else if (filteredTransactions.length > 1 && currMaxTime !== -Infinity) { currentDays = Math.max(1, (currMaxTime - currMinTime) / (1000*60*60*24)); }
+            const dailyAvg = txCount > 0 ? totalAmount / currentDays : 0;
+            animateValue(document.getElementById('kpiAvg'), dailyAvg, true);
+
+            let prevTotal = 0, prevTxCount = 0, prevDailyAvg = 0, hasPrevData = false;
+            if (sy !== 'all' && !startLimit) {
+                const prevYear = parseInt(sy) - 1, prevTxs = allTransactions.filter(t => t.year === prevYear && (sc === 'all' || t.category === sc));
+                if (prevTxs.length > 0) {
+                    hasPrevData = true; prevTxCount = prevTxs.length; prevTotal = prevTxs.reduce((s, t) => s + t.amount, 0);
+                    const pMin = Math.min(...prevTxs.map(t=>t.timestamp)), pMax = Math.max(...prevTxs.map(t=>t.timestamp));
+                    prevDailyAvg = prevTotal / Math.max(1, (pMax - pMin)/(1000*60*60*24));
+                }
+            } else if (startLimit) {
+                const duration = endLimit - startLimit, prevTxs = allTransactions.filter(t => t.timestamp >= (startLimit - duration) && t.timestamp < startLimit && (sc === 'all' || t.category === sc) && (sy === 'all' || t.year.toString() === sy));
+                if (prevTxs.length > 0) { hasPrevData = true; prevTxCount = prevTxs.length; prevTotal = prevTxs.reduce((s, t) => s + t.amount, 0); prevDailyAvg = prevTotal / (duration / (1000*60*60*24)); }
+            }
+
+            function updateCompUI(elId, curr, prev, invertColors = false) {
+                const el = document.getElementById(elId); if(!el) return;
+                if (hasPrevData && prev > 0) {
+                    const pct = ((curr - prev) / prev) * 100; const isLess = pct < 0;
+                    const icon = isLess ? '<i class="fa-solid fa-arrow-down mr-1"></i>' : '<i class="fa-solid fa-arrow-up mr-1"></i>';
+                    let colorClass = isLess ? 'text-green-500' : 'text-red-500'; if (invertColors) colorClass = isLess ? 'text-red-500' : 'text-green-500';
+                    el.innerHTML = `<span class="${colorClass} mr-2">${icon}${Math.abs(pct).toFixed(1)}%</span> <span class="text-gray-400 font-medium">vs periodo anterior</span>`;
+                } else el.innerHTML = `<span class="text-gray-400 font-medium italic">Sin prev.</span>`;
+            }
+            updateCompUI('kpiTotalComp', totalAmount, prevTotal); updateCompUI('kpiAvgComp', dailyAvg, prevDailyAvg); updateCompUI('kpiTxComp', txCount, prevTxCount); 
+
+            let recentMonthTotal = 0;
+            const bLabel = document.getElementById('budgetMonthLabel');
+            if (filteredTransactions.length > 0) { const mostRecentSortKey = filteredTransactions[0].sortKey; recentMonthTotal = filteredTransactions.filter(t => t.sortKey === mostRecentSortKey).reduce((s, t) => s + t.amount, 0); if(bLabel) bLabel.innerText = filteredTransactions[0].monthYearLabel; } 
+            else { if(bLabel) bLabel.innerText = "Mes"; }
+            const bLimit = document.getElementById('budgetLimitDisplay'); if(bLimit) bLimit.innerText = formatComp(monthlyBudget) + ' €';
+            animateValue(document.getElementById('budgetSpent'), recentMonthTotal, true);
+            let pct = (recentMonthTotal / monthlyBudget) * 100; if(isNaN(pct) || !isFinite(pct)) pct = 0;
+            const bProg = document.getElementById('budgetProgress'), bCard = document.getElementById('budgetCard');
+            if(bProg) { bProg.style.width = Math.min(pct, 100) + '%'; if (pct >= 90) { bProg.classList.replace('bg-emerald-500', 'bg-red-500'); if(bCard) bCard.classList.replace('border-emerald-500', 'border-red-500'); } else { bProg.classList.replace('bg-red-500', 'bg-emerald-500'); if(bCard) bCard.classList.replace('border-red-500', 'border-emerald-500'); } }
+
+            updateCharts(); updateTopComercios(); updateTableOnly();
+        }
+
+        function updateCharts() {
+            const barCtx = document.getElementById('barChart')?.getContext('2d'), dCtx = document.getElementById('doughnutChart')?.getContext('2d');
+            if(!barCtx || !dCtx) return;
+            const monthlyMap = new Map(); filteredTransactions.forEach(t => { if(!monthlyMap.has(t.sortKey)) monthlyMap.set(t.sortKey, { label: t.monthYearLabel, amount: 0 }); monthlyMap.get(t.sortKey).amount += t.amount; });
+            const sData = Array.from(monthlyMap.entries()).sort((a, b) => a[0] - b[0]).map(e => e[1]);
+            
+            if (chartInstances.bar) { chartInstances.bar.data.labels = sData.map(d => d.label); chartInstances.bar.data.datasets[0].data = sData.map(d => d.amount); chartInstances.bar.update(); } 
+            else {
+                const grad = barCtx.createLinearGradient(0, 0, 0, 400); grad.addColorStop(0, 'rgba(59, 130, 246, 0.7)'); grad.addColorStop(1, 'rgba(59, 130, 246, 0.05)');
+                chartInstances.bar = new Chart(barCtx, { type: 'line', data: { labels: sData.map(d => d.label), datasets: [{ data: sData.map(d => d.amount), backgroundColor: grad, borderColor: '#3b82f6', borderWidth: 2, fill: true, tension: 0.15, pointRadius: 2.5, pointHoverRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, layout: { padding: { left: -5, bottom: 10, top: 5, right: 5 } }, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { padding: 10, bodyFont: { size: 13 }, callbacks: { label: c => ' ' + formatCur(c.raw) } } }, scales: { y: { beginAtZero: true, border: {display:false}, ticks: {font: { size: 11 }, maxTicksLimit: 6, callback: v => formatComp(v) + ' €'} }, x: { grid: {display:false}, border: {display:false}, ticks: {font: { size: 10 }, maxRotation: 45, minRotation: 0, padding: 5} } } } });
+            }
+
+            const catMap = new Map(); 
+            let totalPeriodSpend = 0;
+            filteredTransactions.forEach(t => { 
+                if (!catMap.has(t.category)) catMap.set(t.category, { amount: 0, color: t.color, emoji: t.emoji }); 
+                catMap.get(t.category).amount += t.amount; 
+                totalPeriodSpend += t.amount;
+            });
+            
+            let sCats = Array.from(catMap.entries()).sort((a, b) => b[1].amount - a[1].amount).map(e => ({ label: e[0], ...e[1] }));
+            
+            const MAX_SLICES = 6;
+            const THRESHOLD_PCT = 0.02;
+            let finalSlices = [];
+            let otrosAmount = 0;
+            window.currentOtrosCategories = [];
+
+            sCats.forEach((cat, index) => {
+                const isUnderThreshold = (cat.amount / totalPeriodSpend) < THRESHOLD_PCT;
+                const isBeyondMaxSlices = index >= MAX_SLICES;
+
+                if (isBeyondMaxSlices || isUnderThreshold) {
+                    otrosAmount += cat.amount;
+                    window.currentOtrosCategories.push(cat.label);
+                } else {
+                    finalSlices.push(cat);
+                }
+            });
+
+            if (otrosAmount > 0) {
+                finalSlices.push({
+                    label: 'Otros',
+                    amount: otrosAmount,
+                    color: '#9ca3af',
+                    emoji: '📦'
+                });
+            }
+
+            if (chartInstances.doughnut) { 
+                chartInstances.doughnut.data.labels = finalSlices.map(d => d.label); 
+                chartInstances.doughnut.data.datasets[0].data = finalSlices.map(d => d.amount); 
+                chartInstances.doughnut.data.datasets[0].backgroundColor = finalSlices.map(d => d.color); 
+                chartInstances.doughnut.update(); 
+            } else {
+                chartInstances.doughnut = new Chart(dCtx, { 
+                    type: 'doughnut', 
+                    data: { 
+                        labels: finalSlices.map(d => d.label), 
+                        datasets: [{ data: finalSlices.map(d => d.amount), backgroundColor: finalSlices.map(d => d.color), borderWidth: 2 }] 
+                    }, 
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        cutout: '68%', 
+                        layout: { padding: 10 }, 
+                        plugins: { 
+                            legend: { 
+                                position: 'right', 
+                                labels: { usePointStyle: true, boxWidth: 8, font: { size: 10, weight: '600' } } 
+                            }, 
+                            tooltip: { padding: 12, callbacks: { label: c => ` ${c.label}: ${formatCur(c.raw)}` } } 
+                        }, 
+                        onHover: (e, el) => e.native.target.style.cursor = el[0] ? 'pointer' : 'default', 
+                        onClick: (e, elements) => { 
+                            if (elements.length > 0 && window.openDrilldown) {
+                                window.openDrilldown(chartInstances.doughnut.data.labels[elements[0].index]); 
+                            }
+                        } 
+                    } 
+                });
+            }
+            updateChartTheme();
+        }
+
+        function updateTopComercios() {
+            const list = document.getElementById('topComerciosList');
+            if(!list) return;
+            const merchantMap = new Map(); filteredTransactions.forEach(t => { const name = t.normalizedConcept; if (name.toLowerCase() === "varios" || name.toLowerCase() === "varios / desconocido") return; if (!merchantMap.has(name)) merchantMap.set(name, { count: 0, amount: 0, color: t.color }); const m = merchantMap.get(name); m.count++; m.amount += t.amount; });
+            const top5 = Array.from(merchantMap.entries()).sort((a,b) => b[1].count - a[1].count).slice(0, 5).map(e => ({ name: e[0], ...e[1] }));
+            if (!top5.length) { list.innerHTML = `<p class="text-sm text-gray-500 italic text-center py-8">Datos insuficientes para el Top 5.</p>`; return; }
+            list.innerHTML = top5.map((m, i) => `<div class="flex items-center justify-between p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-700/50"><div class="flex items-center gap-3 overflow-hidden"><div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shadow-sm flex-shrink-0" style="background-color: ${m.color}20; color: ${m.color}; border: 1px solid ${m.color}40">#${i+1}</div><div class="flex flex-col truncate"><span class="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">${m.name}</span><span class="text-xs text-gray-500 dark:text-gray-400 truncate">${m.count} visitas este periodo</span></div></div><div class="text-right ml-2 flex-shrink-0"><span class="text-sm font-bold text-gray-800 dark:text-gray-200 block blur-data">${formatCur(m.amount)}</span></div></div>`).join('');
+        }
+
+        function updateTableOnly() {
+            const table = document.getElementById('transactionsTable'), tInfo = document.getElementById('tableCountInfo'), tSearch = document.getElementById('tableSearch');
+            if(!table || !tInfo || !tSearch) return;
+            const search = tSearch.value.toUpperCase();
+            currentlyDisplayedTableData = filteredTransactions.filter(t => t.description.includes(search) || t.category.toUpperCase().includes(search)).sort((a, b) => b.amount - a.amount);
+            const displayData = currentlyDisplayedTableData.slice(0, 150);
+            tInfo.innerText = `Mostrando ${displayData.length} de ${currentlyDisplayedTableData.length} resultados.`; tInfo.classList.remove('hidden');
+            if (!displayData.length) { table.innerHTML = `<tr><td colspan="4" class="px-6 py-16 text-center"><div class="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500"><i class="fa-solid fa-ghost text-5xl mb-4 opacity-50"></i><p class="text-lg font-bold text-gray-600 dark:text-gray-400">No hay movimientos aquí</p></div></td></tr>`; return; }
+            table.innerHTML = displayData.map(t => `<tr class="hover:bg-blue-50/60 dark:hover:bg-blue-900/30 transition-colors"><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 font-medium">${t.dateFormatted}</td><td class="px-6 py-4 text-sm text-gray-800 dark:text-gray-200 truncate max-w-[180px] sm:max-w-xs md:max-w-sm lg:max-w-md" title="${t.description}">${t.description}</td><td class="px-6 py-4 whitespace-nowrap text-sm"><span class="cat-badge px-3 py-1 inline-flex items-center gap-1.5 cursor-pointer text-xs font-bold rounded-full shadow-sm hover:scale-105 transition-transform" data-cat="${t.category}" style="color: ${t.color}; background-color: ${t.color}15; border: 1px solid ${t.color}30"><span>${t.emoji || '🏷️'}</span> ${t.category}</span></td><td class="px-6 py-4 whitespace-nowrap text-sm text-right font-extrabold text-red-500 dark:text-red-400 tracking-tight">-<span class="blur-data">${formatCur(t.amount)}</span></td></tr>`).join('');
+        }
+
+        // ==========================================
+        // UI UTILITIES
+        // ==========================================
+        function showLoader(msg) {
+            const l = document.getElementById('globalLoader'), t = document.getElementById('globalLoaderText');
+            if(l) { l.classList.remove('hidden'); l.style.opacity = '1'; }
+            if(t) t.innerText = msg || 'Procesando...';
+        }
+        function hideLoader() {
+            const l = document.getElementById('globalLoader');
+            if(l) l.classList.add('hidden');
+        }
+        function openModal(modal) {
+            if(!modal) return;
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.style.opacity = '1';
+                const inner = modal.querySelector('.scale-95');
+                if(inner) inner.classList.replace('scale-95', 'scale-100');
+            });
+        }
+        function closeModal(modal) {
+            if(!modal) return;
+            modal.style.opacity = '0';
+            const inner = modal.querySelector('.scale-100');
+            if(inner) inner.classList.replace('scale-100', 'scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+        function animateValue(el, target, isCurrency) {
+            if(!el) return;
+            const duration = 600, startTime = performance.now();
+            function update(now) {
+                const progress = Math.min((now - startTime) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const current = target * eased;
+                el.innerText = isCurrency ? formatCur(current) : Math.round(current).toString();
+                if(progress < 1) requestAnimationFrame(update);
+                else el.innerText = isCurrency ? formatCur(target) : target.toString();
+            }
+            requestAnimationFrame(update);
+        }
+
+        // ==========================================
+        // TOASTS
+        // ==========================================
+        window.showToast = function(msg, type = 'info', dur = 4000) {
+            const container = document.getElementById('toastContainer');
+            if(!container) return;
+            const colors = { success: 'bg-emerald-500', error: 'bg-red-500', warning: 'bg-amber-500', info: 'bg-blue-500' };
+            const icons = { success: 'fa-circle-check', error: 'fa-circle-xmark', warning: 'fa-triangle-exclamation', info: 'fa-circle-info' };
+            const toast = document.createElement('div');
+            toast.className = `flex items-start gap-3 p-4 rounded-2xl shadow-2xl text-white text-sm font-semibold toast-enter ${colors[type] || colors.info} max-w-xs w-full pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info} text-lg mt-0.5 flex-shrink-0"></i><span class="flex-1 leading-snug">${msg}</span><button class="ml-auto opacity-60 hover:opacity-100 flex-shrink-0 focus:outline-none" onclick="this.closest('div').remove()"><i class="fa-solid fa-xmark"></i></button>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.replace('toast-enter', 'toast-leave'); setTimeout(() => toast.remove(), 300); }, dur);
+        };
+        window.showConfirmToast = function(msg) {
+            return new Promise(resolve => {
+                const container = document.getElementById('toastContainer');
+                if(!container) { resolve(false); return; }
+                const toast = document.createElement('div');
+                toast.className = 'flex flex-col gap-3 p-4 rounded-2xl shadow-2xl bg-gray-800 dark:bg-gray-900 text-white text-sm font-semibold toast-enter max-w-xs w-full pointer-events-auto border border-gray-700';
+                toast.innerHTML = `<span class="leading-snug"><i class="fa-solid fa-circle-question mr-2 text-amber-400"></i>${msg}</span><div class="flex gap-2"><button id="_confirmYes" class="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-xl py-1.5 text-xs font-bold transition-colors">Sí, eliminar</button><button id="_confirmNo" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white rounded-xl py-1.5 text-xs font-bold transition-colors">Cancelar</button></div>`;
+                container.appendChild(toast);
+                toast.querySelector('#_confirmYes').addEventListener('click', () => { toast.classList.replace('toast-enter','toast-leave'); setTimeout(()=>toast.remove(),300); resolve(true); });
+                toast.querySelector('#_confirmNo').addEventListener('click', () => { toast.classList.replace('toast-enter','toast-leave'); setTimeout(()=>toast.remove(),300); resolve(false); });
+            });
+        };
+
+        // ==========================================
+        // CATEGORIZATION
+        // ==========================================
+        function applyCategorization(transactions, rules) {
+            transactions.forEach(t => {
+                let matched = false;
+                for(const rule of rules) {
+                    if(rule.keywords.some(kw => t.description.includes(kw.toUpperCase().trim()))) {
+                        t.category = rule.category;
+                        t.color = rule.color;
+                        t.emoji = rule.emoji || '🏷️';
+                        matched = true;
+                        break;
+                    }
+                }
+                if(!matched) { t.category = 'Otros'; t.color = '#9ca3af'; t.emoji = '📦'; }
+                const words = t.description.replace(/[*\/\\#@]/g, ' ').split(' ').filter(w => w.length > 3);
+                t.normalizedConcept = words.slice(0, 2).join(' ') || t.description.slice(0, 20);
+            });
+            // Render rules list in sidebar
+            const rulesList = document.getElementById('rulesList');
+            if(rulesList) {
+                rulesList.innerHTML = rules.map(r => `<div class="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50 last:border-0"><span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${r.color}"></span><span class="truncate text-gray-600 dark:text-gray-400">${r.emoji || ''} ${r.category}</span></div>`).join('');
+            }
+        }
+
+        // ==========================================
+        // CHART THEME
+        // ==========================================
+        function updateChartTheme() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const tickColor = isDark ? '#9ca3af' : '#6b7280';
+            const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+            Object.values(chartInstances).forEach(chart => {
+                if(!chart || !chart.options) return;
+                if(chart.options.scales) Object.values(chart.options.scales).forEach(s => { if(s.ticks) s.ticks.color = tickColor; if(s.grid) s.grid.color = gridColor; });
+                if(chart.options.plugins?.legend?.labels) chart.options.plugins.legend.labels.color = tickColor;
+                chart.update('none');
+            });
+        }
+
+        // ==========================================
+        // CATEGORY FILTER
+        // ==========================================
+        window.setCategoryFilter = function(cat) {
+            const cFilt = document.getElementById('categoryFilter');
+            if(cFilt) { cFilt.value = cat; updateDashboard(); }
+        };
+
+        // ==========================================
+        // EXPORT IMAGE
+        // ==========================================
+        function roundRect(ctx, x, y, w, h, r) {
+            ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+            ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h);
+            ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+        }
+        function exportImage() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1200; canvas.height = 680;
+            const ctx = canvas.getContext('2d');
+            const bg = ctx.createLinearGradient(0,0,0,680);
+            bg.addColorStop(0,'#0f172a'); bg.addColorStop(1,'#1e293b');
+            ctx.fillStyle = bg; ctx.fillRect(0,0,1200,680);
+            // Header
+            ctx.fillStyle = '#60a5fa'; ctx.font = 'bold 20px Arial'; ctx.fillText('📊  Analizador Financiero PWA', 40, 48);   
+            ctx.fillStyle = '#475569'; ctx.font = '13px Arial'; ctx.textAlign = 'right';
+            ctx.fillText(new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'}), 1160, 48);
+            ctx.textAlign = 'left'; ctx.fillStyle = '#1e3a5f'; ctx.fillRect(40, 58, 1120, 1);
+            // KPIs
+            const kpis = [
+                { label: 'GASTO TOTAL', val: document.getElementById('kpiTotal')?.innerText||'0 €', color:'#3b82f6' },
+                { label: 'TRANSACCIONES', val: document.getElementById('kpiTxCount')?.innerText||'0', color:'#8b5cf6' },
+                { label: 'MEDIA DIARIA', val: document.getElementById('kpiAvg')?.innerText||'0 €', color:'#10b981' },
+                { label: 'PRESUPUESTO MES', val: document.getElementById('budgetSpent')?.innerText||'0 €', color:'#f59e0b' }
+            ];
+            kpis.forEach((k,i) => {
+                const x = 40+i*290, y = 72;
+                ctx.fillStyle = 'rgba(255,255,255,0.04)'; roundRect(ctx,x,y,272,100,12); ctx.fill();
+                ctx.strokeStyle = k.color+'50'; ctx.lineWidth=1; roundRect(ctx,x,y,272,100,12); ctx.stroke();
+                ctx.fillStyle = k.color; ctx.font='bold 10px Arial'; ctx.fillText(k.label, x+16, y+22);
+                ctx.fillStyle = '#f1f5f9'; ctx.font='bold 26px Arial'; ctx.fillText(k.val, x+16, y+62);
+            });
+            // Categories section
+            const catMap = new Map();
+            filteredTransactions.forEach(t => { if(!catMap.has(t.category)) catMap.set(t.category,{amount:0,color:t.color}); catMap.get(t.category).amount+=t.amount; });
+            const cats = Array.from(catMap.entries()).sort((a,b)=>b[1].amount-a[1].amount).slice(0,7);
+            const maxAmt = cats[0]?.[1].amount||1;
+            ctx.fillStyle='#94a3b8'; ctx.font='bold 12px Arial'; ctx.fillText('DISTRIBUCIÓN POR CATEGORÍA', 40, 212);
+            ctx.fillStyle='#1e3a5f'; ctx.fillRect(40,220,1120,1);
+            cats.forEach(([label,data],i) => {
+                const y=232+i*56, barW=Math.max(20,(data.amount/maxAmt)*740);
+                ctx.fillStyle='rgba(255,255,255,0.025)'; roundRect(ctx,40,y,1120,48,8); ctx.fill();
+                ctx.fillStyle=data.color+'25'; roundRect(ctx,40,y,barW+180,48,8); ctx.fill();
+                ctx.fillStyle=data.color; roundRect(ctx,40,y,5,48,3); ctx.fill();
+                ctx.fillStyle='#e2e8f0'; ctx.font='bold 14px Arial'; ctx.fillText(label, 56, y+30);
+                ctx.fillStyle=data.color; ctx.font='bold 15px Arial'; ctx.textAlign='right';
+                ctx.fillText(formatCur(data.amount), 1148, y+30); ctx.textAlign='left';
+            });
+            // Footer
+            ctx.fillStyle='#334155'; ctx.font='11px Arial'; ctx.textAlign='center';
+            ctx.fillText('Generado con Analizador Financiero PWA  •  Solo uso personal', 600, 666);   
+            ctx.textAlign='left';
+            const link = document.createElement('a');
+            const yFilt = document.getElementById('yearFilter');
+            link.download = `Dashboard_Financiero_${yFilt?.value||'historico'}_${new Date().toISOString().slice(0,10)}.png`;
+            link.href = canvas.toDataURL('image/png'); link.click();
+            window.showToast('Infografía exportada correctamente.','success');
+        }
+
+        // ==========================================
+        // EXPORT CSV
+        // ==========================================
+        function exportCsv() {
+            if(!filteredTransactions.length) { window.showToast('No hay datos para exportar.','warning'); return; }
+            const rows = [['Fecha','Concepto','Categoría','Importe (€)'], ...filteredTransactions.map(t=>[t.dateFormatted,`"${t.description}"`,t.category,t.amount.toFixed(2)])];
+            const csv = rows.map(r=>r.join(';')).join('\n');
+            const blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            const yFilt = document.getElementById('yearFilter');
+            link.download = `Transacciones_Exportadas_${yFilt?.value||'todas'}_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click(); window.showToast('CSV exportado correctamente.','success');
+        }
+
+        // ==========================================
+        // THEME
+        // ==========================================
+        function applyTheme(dark) {
+            const html = document.documentElement, icon = document.getElementById('themeIcon');
+            if(dark) { html.classList.add('dark'); html.classList.remove('light'); if(icon){icon.classList.remove('fa-moon');icon.classList.add('fa-sun');} }
+            else { html.classList.remove('dark'); html.classList.add('light'); if(icon){icon.classList.remove('fa-sun');icon.classList.add('fa-moon');} }
+            try { localStorage.setItem('theme', dark?'dark':'light'); } catch(e){}
+            setTimeout(updateChartTheme, 50);
+        }
+        // Init theme on load
+        (function(){
+            const saved = localStorage.getItem('theme');
+            if(saved==='dark') applyTheme(true);
+            else if(saved==='light') applyTheme(false);
+            else if(window.matchMedia('(prefers-color-scheme: dark)').matches) applyTheme(true);
+            if(localStorage.getItem('incognito')==='true') {
+                document.body.classList.add('incognito-active');
+                const icon = document.getElementById('incognitoIcon');
+                if(icon){icon.classList.remove('fa-eye');icon.classList.add('fa-eye-slash');}
+            }
+        })();
+
+        // ==========================================
+        // CALENDAR
+        // ==========================================
+        function updateCalendarUI() {
+            const grid = document.getElementById('calDaysGrid'), monthYearEl = document.getElementById('calMonthYear'), calTotalEl = document.getElementById('calTotalSpend');
+            if(!grid) return;
+            const month = currentCalDate.getMonth(), year = currentCalDate.getFullYear();
+            if(monthYearEl) monthYearEl.innerText = new Intl.DateTimeFormat('es-ES',{month:'long',year:'numeric'}).format(currentCalDate);
+            const monthTxs = allTransactions.filter(t=>{ const d=new Date(t.timestamp); return d.getMonth()===month && d.getFullYear()===year; });
+            if(calTotalEl) calTotalEl.innerText = formatCur(monthTxs.reduce((s,t)=>s+t.amount,0));
+            const firstDay = new Date(year,month,1).getDay();
+            const offset = firstDay===0?6:firstDay-1;
+            const daysInMonth = new Date(year,month+1,0).getDate();
+            const daysWithTx = new Set(monthTxs.map(t=>new Date(t.timestamp).getDate()));
+            let html = '';
+            for(let i=0;i<offset;i++) html+='<div></div>';
+            for(let d=1;d<=daysInMonth;d++){
+                const ts = new Date(year,month,d).getTime();
+                let cls = 'calendar-day w-full aspect-square flex flex-col items-center justify-center rounded-lg cursor-pointer text-xs relative transition-colors hover:bg-gray-100 dark:hover:bg-gray-700';
+                const sd = selectedStartDate?.getTime(), ed = selectedEndDate?.getTime(), hd = hoverDate?.getTime();
+                if(sd && ed){ if(ts===sd&&ts===ed) cls+=' single-selected'; else if(ts===sd) cls+=' start-range'; else if(ts===ed) cls+=' end-range'; else if(ts>sd&&ts<ed) cls+=' in-range'; }
+                else if(sd&&!ed){ if(ts===sd) cls+=' single-selected'; else if(hd){ const lo=Math.min(sd,hd),hi=Math.max(sd,hd); if(ts===lo) cls+=' start-range'; else if(ts===hi) cls+=' end-range'; else if(ts>lo&&ts<hi) cls+=' hover-range'; } }
+                const dot = daysWithTx.has(d)?'<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-400 opacity-80"></span>':'';
+                html+=`<div class="${cls}" data-ts="${ts}"><div class="day-num text-xs">${d}</div>${dot}</div>`;
+            }
+            grid.innerHTML = html;
+            grid.querySelectorAll('.calendar-day[data-ts]').forEach(el=>{
+                el.addEventListener('click',()=>{
+                    const ts=parseInt(el.getAttribute('data-ts')), clicked=new Date(ts);
+                    if(!selectedStartDate||(selectedStartDate&&selectedEndDate)){ selectedStartDate=clicked; selectedEndDate=null; }
+                    else { if(ts===selectedStartDate.getTime()){selectedStartDate=null;selectedEndDate=null;} else if(clicked<selectedStartDate){selectedEndDate=selectedStartDate;selectedStartDate=clicked;} else {selectedEndDate=clicked;} }
+                    hoverDate=null; updateCalendarBtnText(); updateCalendarUI(); updateDashboard();
+                });
+                el.addEventListener('mouseenter',()=>{ if(selectedStartDate&&!selectedEndDate){hoverDate=new Date(parseInt(el.getAttribute('data-ts')));updateCalendarUI();} });
+            });
+        }
+        function updateCalendarBtnText() {
+            const btn=document.getElementById('calendarBtnText'), clearBtn=document.getElementById('clearDateBtn');
+            if(!btn) return;
+            if(selectedStartDate&&selectedEndDate){ btn.innerText=`${selectedStartDate.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})} — ${selectedEndDate.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})}`; if(clearBtn) clearBtn.classList.remove('hidden'); }
+            else if(selectedStartDate){ btn.innerText=selectedStartDate.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}); if(clearBtn) clearBtn.classList.remove('hidden'); }
+            else { btn.innerText='Rango de Fechas'; if(clearBtn) clearBtn.classList.add('hidden'); }
+        }
+
+        // ==========================================
+        // DRILLDOWN
+        // ==========================================
+        window.openDrilldown = function(categoryLabel) {
+            const modal = document.getElementById('drilldownModal');
+            if(!modal) return;
+            const txs = categoryLabel==='Otros' ? filteredTransactions.filter(t=>window.currentOtrosCategories?.includes(t.category)) : filteredTransactions.filter(t=>t.category===categoryLabel);
+            if(!txs.length) return;
+            const titleEl=document.getElementById('drilldownTitle'); if(titleEl) titleEl.innerText=categoryLabel;
+            const totalAmt=txs.reduce((s,t)=>s+t.amount,0), grandTotal=filteredTransactions.reduce((s,t)=>s+t.amount,0);
+            const ddTotal=document.getElementById('ddTotalAmount'),ddPct=document.getElementById('ddTotalPct'),ddAvg=document.getElementById('ddAvgAmount'),ddMax=document.getElementById('ddMaxMonth');
+            if(ddTotal) ddTotal.innerText=formatCur(totalAmt);
+            if(ddPct) ddPct.innerText=((totalAmt/grandTotal)*100).toFixed(1)+'% del periodo';
+            const monthMap=new Map();
+            txs.forEach(t=>{if(!monthMap.has(t.sortKey))monthMap.set(t.sortKey,{label:t.monthYearLabel,amount:0});monthMap.get(t.sortKey).amount+=t.amount;});
+            const months=Array.from(monthMap.values()).sort((a,b)=>a.label.localeCompare(b.label));
+            const avgMonthly=months.length?totalAmt/months.length:0;
+            const maxMonth=months.reduce((a,b)=>b.amount>a.amount?b:a,months[0]||{label:'-'});
+            if(ddAvg) ddAvg.innerText=formatCur(avgMonthly);
+            if(ddMax) ddMax.innerText='Max: '+(maxMonth?.label||'-');
+            const merchantMap=new Map();
+            txs.forEach(t=>{const n=t.normalizedConcept;if(!merchantMap.has(n))merchantMap.set(n,0);merchantMap.set(n,merchantMap.get(n)+t.amount);});
+            const top3=Array.from(merchantMap.entries()).sort((a,b)=>b[1]-a[1]).slice(0,3);
+            const ddTopEl=document.getElementById('ddTopMerchants');
+            if(ddTopEl) ddTopEl.innerHTML=top3.map(([name,amt])=>`<div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"><span class="text-sm font-semibold text-gray-700 dark:text-gray-300 truncate mr-4">${name}</span><span class="text-sm font-bold text-gray-900 dark:text-white blur-data whitespace-nowrap">${formatCur(amt)}</span></div>`).join('');
+            const conceptMap=new Map();
+            txs.forEach(t=>{const n=t.normalizedConcept;if(!conceptMap.has(n))conceptMap.set(n,0);conceptMap.set(n,conceptMap.get(n)+t.amount);});
+            const topConcepts=Array.from(conceptMap.entries()).sort((a,b)=>b[1]-a[1]).slice(0,8);
+            const ddCtx=document.getElementById('drilldownChart')?.getContext('2d');
+            if(ddCtx){if(chartInstances.drilldown)chartInstances.drilldown.destroy();chartInstances.drilldown=new Chart(ddCtx,{type:'doughnut',data:{labels:topConcepts.map(e=>e[0]),datasets:[{data:topConcepts.map(e=>e[1]),backgroundColor:drilldownPalette.slice(0,topConcepts.length),borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{font:{size:10},usePointStyle:true}},tooltip:{callbacks:{label:c=>` ${c.label}: ${formatCur(c.raw)}`}}}}});}
+            const ddTrendCtx=document.getElementById('drilldownTrendChart')?.getContext('2d');
+            if(ddTrendCtx){if(chartInstances.drilldownTrend)chartInstances.drilldownTrend.destroy();chartInstances.drilldownTrend=new Chart(ddTrendCtx,{type:'line',data:{labels:months.map(m=>m.label),datasets:[{data:months.map(m=>m.amount),borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',fill:true,tension:0.3,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,border:{display:false},ticks:{callback:v=>formatComp(v)+'€',font:{size:10}}},x:{grid:{display:false},border:{display:false},ticks:{font:{size:10}}}}}});}
+            openModal(modal);
+        };
+
+        // ==========================================
+        // DICTIONARY EDITOR
+        // ==========================================
+        function openDictionaryEditor() {
+            const modal = document.getElementById('dictionaryModal');
+            if(!modal) return;
+            editingRules = JSON.parse(JSON.stringify(categoryRules));
+            renderDictionaryRules();
+            openModal(modal);
+        }
+        function renderDictionaryRules() {
+            const container = document.getElementById('dictionaryRulesContainer');
+            if(!container) return;
+            container.innerHTML = editingRules.map((rule,i) => `
+                <div class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600 mb-2">
+                    <div class="flex items-center gap-3 mb-2">
+                        <input type="color" value="${rule.color}" data-rule="${i}" data-field="color" class="w-8 h-8 rounded cursor-pointer border-0 flex-shrink-0">
+                        <input type="text" value="${rule.emoji||'🏷️'}" data-rule="${i}" data-field="emoji" class="w-12 text-center bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg p-1.5 text-sm" maxlength="2">
+                        <input type="text" value="${rule.category}" data-rule="${i}" data-field="category" class="flex-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg p-1.5 text-sm font-bold text-gray-800 dark:text-white" placeholder="Nombre categoría">
+                        <button class="del-rule-btn text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors flex-shrink-0" data-rule="${i}"><i class="fa-solid fa-trash text-xs pointer-events-none"></i></button>
+                    </div>
+                    <input type="text" value="${rule.keywords.join(', ')}" data-rule="${i}" data-field="keywords" class="w-full bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg p-1.5 text-xs text-gray-700 dark:text-gray-300" placeholder="Palabras clave separadas por coma">
+                </div>`).join('');
+            container.querySelectorAll('input[data-rule]').forEach(inp=>{
+                inp.addEventListener('change',()=>{
+                    const i=parseInt(inp.getAttribute('data-rule')),field=inp.getAttribute('data-field');
+                    if(field==='keywords') editingRules[i].keywords=inp.value.split(',').map(k=>k.trim().toUpperCase()).filter(Boolean);
+                    else editingRules[i][field]=inp.value;
+                });
+            });
+            container.querySelectorAll('.del-rule-btn').forEach(btn=>{
+                btn.addEventListener('click',()=>{editingRules.splice(parseInt(btn.getAttribute('data-rule')),1);renderDictionaryRules();});
+            });
+        }
+        function reapplyCategories() {
+            categoryRules = JSON.parse(JSON.stringify(editingRules));
+            try { localStorage.setItem('customCategoryRules', JSON.stringify(categoryRules)); } catch(e){}
+            applyCategorization(allTransactions, categoryRules);
+            updateDashboard();
+            window.showToast('Categorías actualizadas y aplicadas en tiempo real.','success');
+        }
+
+        // ==========================================
+        // ALL UI EVENT LISTENERS
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Theme toggle
+            const themeBtn = document.getElementById('themeToggle');
+            if(themeBtn) themeBtn.addEventListener('click', ()=>applyTheme(!document.documentElement.classList.contains('dark')));
+
+            // Incognito
+            const incBtn=document.getElementById('incognitoToggle'), incIcon=document.getElementById('incognitoIcon');
+            if(incBtn) incBtn.addEventListener('click',()=>{
+                const active=document.body.classList.toggle('incognito-active');
+                if(incIcon){incIcon.classList.toggle('fa-eye',!active);incIcon.classList.toggle('fa-eye-slash',active);}
+                try{localStorage.setItem('incognito',active);}catch(e){}
+            });
+
+            // Export image
+            const expBtn=document.getElementById('exportImageBtn');
+            if(expBtn) expBtn.addEventListener('click', exportImage);
+
+            // Export CSV
+            const csvBtn=document.getElementById('exportCsvBtn');
+            if(csvBtn) csvBtn.addEventListener('click', exportCsv);
+
+            // Reset / cerrar sesión
+            const resetBtn=document.getElementById('resetBtn');
+            if(resetBtn) resetBtn.addEventListener('click', async ()=>{
+                const ok=await window.showConfirmToast('¿Resetear el dashboard y limpiar los datos en pantalla?');
+                if(!ok) return;
+                allTransactions=[]; filteredTransactions=[];
+                const dZone=document.getElementById('dropZoneContainer'),dBoard=document.getElementById('dashboard'),upBtn=document.getElementById('updateDataBtn');
+                if(dZone) dZone.classList.remove('hidden');
+                if(dBoard) dBoard.classList.add('hidden');
+                if(upBtn) upBtn.classList.add('hidden');
+                window.showToast('Dashboard reseteado. El almacén no se ha borrado.','info');
+            });
+
+            // Vault
+            const vaultBtn=document.getElementById('openVaultBtn'),vaultModal=document.getElementById('vaultModal');
+            const closeVaultBtn=document.getElementById('closeVaultBtn'),deleteAllBtn=document.getElementById('deleteAllVaultBtn');
+            if(vaultBtn) vaultBtn.addEventListener('click',()=>{refreshLocalVault();openModal(vaultModal);});
+            if(closeVaultBtn) closeVaultBtn.addEventListener('click',()=>closeModal(vaultModal));
+            if(deleteAllBtn) deleteAllBtn.addEventListener('click', async ()=>{
+                const ok=await window.showConfirmToast('¿Eliminar TODOS los archivos del almacén? Esta acción no se puede deshacer.');
+                if(!ok) return;
+                if(savedFiles){for(const f of savedFiles) await deleteFileFromStorage(f.id,true);}
+                refreshLocalVault(); window.showToast('Almacén vaciado completamente.','success');
+            });
+
+            // Dictionary
+            const dictBtn=document.getElementById('openDictionaryBtn'),dictModal=document.getElementById('dictionaryModal');
+            const closeDictBtn=document.getElementById('closeDictionaryBtn'),cancelDictBtn=document.getElementById('cancelDictionaryBtn');
+            const saveDictBtn=document.getElementById('saveDictionaryBtn'),restoreBtn=document.getElementById('restoreDefaultDictBtn');
+            const addRuleBtn=document.getElementById('addRuleBtn');
+            if(dictBtn) dictBtn.addEventListener('click', openDictionaryEditor);
+            if(closeDictBtn) closeDictBtn.addEventListener('click',()=>closeModal(dictModal));
+            if(cancelDictBtn) cancelDictBtn.addEventListener('click',()=>closeModal(dictModal));
+            if(saveDictBtn) saveDictBtn.addEventListener('click',()=>{reapplyCategories();closeModal(dictModal);});
+            if(restoreBtn) restoreBtn.addEventListener('click', async ()=>{
+                const ok=await window.showConfirmToast('¿Restaurar el diccionario original? Se perderán tus cambios.');
+                if(ok){editingRules=JSON.parse(JSON.stringify(defaultCategoryRules));renderDictionaryRules();window.showToast('Diccionario restaurado al original.','info');}
+            });
+            if(addRuleBtn) addRuleBtn.addEventListener('click',()=>{
+                editingRules.push({keywords:[],category:'Nueva Categoría',color:'#6366f1',emoji:'🏷️'});
+                renderDictionaryRules();
+            });
+
+            // Drilldown close
+            const closeModalBtn=document.getElementById('closeModalBtn'),drilldownModal=document.getElementById('drilldownModal');
+            if(closeModalBtn) closeModalBtn.addEventListener('click',()=>closeModal(drilldownModal));
+
+            // Close modals on backdrop click
+            [vaultModal, drilldownModal, dictModal].forEach(modal=>{
+                if(modal) modal.addEventListener('click',e=>{if(e.target===modal) closeModal(modal);});
+            });
+
+            // Year / category filters
+            const yFilt=document.getElementById('yearFilter'),cFilt=document.getElementById('categoryFilter');
+            if(yFilt) yFilt.addEventListener('change', updateDashboard);
+            if(cFilt) cFilt.addEventListener('change', updateDashboard);
+
+            // Table search
+            const tSearch=document.getElementById('tableSearch'),clearSearchBtn=document.getElementById('clearSearchBtn');
+            if(tSearch) tSearch.addEventListener('input',()=>{updateTableOnly();if(clearSearchBtn) clearSearchBtn.classList.toggle('hidden',!tSearch.value);});
+            if(clearSearchBtn) clearSearchBtn.addEventListener('click',()=>{if(tSearch){tSearch.value='';clearSearchBtn.classList.add('hidden');updateTableOnly();}});
+
+            // Table category badge delegation
+            const tableEl=document.getElementById('transactionsTable');
+            if(tableEl) tableEl.addEventListener('click',e=>{const badge=e.target.closest('.cat-badge');if(badge) window.setCategoryFilter(badge.getAttribute('data-cat'));});
+
+            // Budget
+            const editBudgetBtn=document.getElementById('editBudgetBtn'),budgetInputContainer=document.getElementById('budgetInputContainer');
+            const budgetInput=document.getElementById('budgetInput'),saveBudgetBtn=document.getElementById('saveBudgetBtn'),cancelBudgetBtn=document.getElementById('cancelBudgetBtn');
+            if(editBudgetBtn) editBudgetBtn.addEventListener('click',()=>{if(budgetInputContainer)budgetInputContainer.classList.remove('hidden');if(budgetInput){budgetInput.value=monthlyBudget;budgetInput.focus();}});
+            if(saveBudgetBtn) saveBudgetBtn.addEventListener('click',()=>{
+                const v=parseFloat(budgetInput?.value);
+                if(!isNaN(v)&&v>0){monthlyBudget=v;try{localStorage.setItem('monthlyBudget',v);}catch(e){}updateDashboard();window.showToast('Presupuesto mensual actualizado.','success');}
+                if(budgetInputContainer) budgetInputContainer.classList.add('hidden');
+            });
+            if(cancelBudgetBtn) cancelBudgetBtn.addEventListener('click',()=>{if(budgetInputContainer)budgetInputContainer.classList.add('hidden');});
+
+            // Calendar
+            const openCalBtn=document.getElementById('openCalendarBtn'),calDrop=document.getElementById('calendarDropdown');
+            const clearDateBtn=document.getElementById('clearDateBtn');
+            const calPrev=document.getElementById('calPrevBtn'),calNext=document.getElementById('calNextBtn');
+            const calQuickSelectBtn=document.getElementById('calQuickSelectBtn'),closeQuickSelectBtn=document.getElementById('closeQuickSelectBtn');
+            const viewMonthBtn=document.getElementById('viewMonthBtn'),viewWeekBtn=document.getElementById('viewWeekBtn');
+            if(openCalBtn) openCalBtn.addEventListener('click',e=>{e.stopPropagation();if(calDrop){calDrop.classList.toggle('hidden');if(!calDrop.classList.contains('hidden'))updateCalendarUI();}});
+            if(clearDateBtn) clearDateBtn.addEventListener('click',()=>{selectedStartDate=null;selectedEndDate=null;hoverDate=null;updateCalendarBtnText();updateCalendarUI();updateDashboard();});
+            if(calPrev) calPrev.addEventListener('click',()=>{currentCalDate.setMonth(currentCalDate.getMonth()-1);updateCalendarUI();});
+            if(calNext) calNext.addEventListener('click',()=>{currentCalDate.setMonth(currentCalDate.getMonth()+1);updateCalendarUI();});
+            if(viewMonthBtn) viewMonthBtn.addEventListener('click',()=>{calendarViewMode='month';viewMonthBtn.classList.add('bg-white','dark:bg-gray-600','shadow-sm','text-blue-600');viewWeekBtn?.classList.remove('bg-white','dark:bg-gray-600','shadow-sm','text-blue-600');updateCalendarUI();});
+            if(viewWeekBtn) viewWeekBtn.addEventListener('click',()=>{calendarViewMode='week';viewWeekBtn.classList.add('bg-white','dark:bg-gray-600','shadow-sm','text-blue-600');viewMonthBtn?.classList.remove('bg-white','dark:bg-gray-600','shadow-sm','text-blue-600');updateCalendarUI();});
+            if(calQuickSelectBtn) calQuickSelectBtn.addEventListener('click',()=>{
+                const panel=document.getElementById('quickSelectPanel'),grid=document.getElementById('quickSelectGrid');
+                if(!panel||!grid) return;
+                const years=[...new Set(allTransactions.map(t=>t.year))].sort((a,b)=>b-a);
+                grid.innerHTML = years.length
+                    ? years.map(y=>`<button class="quick-year-btn bg-gray-100 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg py-2 text-sm font-bold text-gray-700 dark:text-gray-200 transition-colors" data-year="${y}">${y}</button>`).join('')
+                    : '<p class="text-xs text-gray-400 col-span-3 text-center py-4">Sin datos cargados</p>';
+                grid.querySelectorAll('.quick-year-btn').forEach(btn=>{
+                    btn.addEventListener('click',()=>{
+                        const y=parseInt(btn.getAttribute('data-year'));
+                        selectedStartDate=new Date(y,0,1); selectedEndDate=new Date(y,11,31);
+                        currentCalDate=new Date(y,0,1);
+                        updateCalendarBtnText();updateCalendarUI();updateDashboard();
+                        panel.classList.add('hidden');
+                    });
+                });
+                panel.classList.remove('hidden');
+            });
+            if(closeQuickSelectBtn) closeQuickSelectBtn.addEventListener('click',()=>{const p=document.getElementById('quickSelectPanel');if(p)p.classList.add('hidden');});
+
+            // Close calendar on outside click
+            document.addEventListener('click',e=>{
+                const calContainer=document.getElementById('datePickerContainer');
+                if(calDrop&&!calDrop.classList.contains('hidden')&&calContainer&&!calContainer.contains(e.target)) calDrop.classList.add('hidden');
+            });
+
+            // PWA install button
+            let deferredPrompt=null;
+            window.addEventListener('beforeinstallprompt',e=>{
+                e.preventDefault(); deferredPrompt=e;
+                const btn=document.getElementById('installAppBtn');
+                if(btn){btn.classList.remove('hidden');btn.classList.add('flex');}
+            });
+            const installBtn=document.getElementById('installAppBtn');
+            if(installBtn) installBtn.addEventListener('click', async ()=>{
+                if(!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const {outcome}=await deferredPrompt.userChoice;
+                if(outcome==='accepted'){installBtn.classList.add('hidden');installBtn.classList.remove('flex');}
+                deferredPrompt=null;
+            });
+
+            // Init calendar
+            updateCalendarUI();
+        });
+
+    </script>
+</body>
+</html>

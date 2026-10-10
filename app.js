@@ -320,40 +320,28 @@ function updateDashboard() {
 function updateCharts() {
     const barCtx = document.getElementById('barChart')?.getContext('2d'), dCtx = document.getElementById('doughnutChart')?.getContext('2d');
     if(!barCtx || !dCtx) return;
+    
+    // --- GRÁFICO DE BARRAS (Evolución) ---
     const monthlyMap = new Map(); filteredTransactions.forEach(t => { if(!monthlyMap.has(t.sortKey)) monthlyMap.set(t.sortKey, { label: t.monthYearLabel, amount: 0 }); monthlyMap.get(t.sortKey).amount += t.amount; });
     const sData = Array.from(monthlyMap.entries()).sort((a, b) => a[0] - b[0]).map(e => e[1]);
     
-    if (chartInstances.bar) { chartInstances.bar.data.labels = sData.map(d => d.label); chartInstances.bar.data.datasets[0].data = sData.map(d => d.amount); chartInstances.bar.update(); } 
-    else {
+    if (chartInstances.bar) { 
+        chartInstances.bar.data.labels = sData.map(d => d.label); chartInstances.bar.data.datasets[0].data = sData.map(d => d.amount); chartInstances.bar.update(); 
+    } else {
         const grad = barCtx.createLinearGradient(0, 0, 0, 400); grad.addColorStop(0, 'rgba(59, 130, 246, 0.7)'); grad.addColorStop(1, 'rgba(59, 130, 246, 0.05)');
         chartInstances.bar = new Chart(barCtx, { type: 'line', data: { labels: sData.map(d => d.label), datasets: [{ data: sData.map(d => d.amount), backgroundColor: grad, borderColor: '#3b82f6', borderWidth: 2, fill: true, tension: 0.15, pointRadius: 2.5, pointHoverRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, layout: { padding: { left: -5, bottom: 10, top: 5, right: 5 } }, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { padding: 10, bodyFont: { size: 13 }, callbacks: { label: c => ' ' + formatCur(c.raw) } } }, scales: { y: { beginAtZero: true, border: {display:false}, ticks: {font: { size: 11 }, maxTicksLimit: 6, callback: v => formatComp(v) + ' €'} }, x: { grid: {display:false}, border: {display:false}, ticks: {font: { size: 10 }, maxRotation: 45, minRotation: 0, padding: 5} } } } });
     }
 
+    // --- GRÁFICO DE ANILLO (Distribución) ---
     const catMap = new Map(); 
-    let totalPeriodSpend = 0;
     filteredTransactions.forEach(t => { 
         if (!catMap.has(t.category)) catMap.set(t.category, { amount: 0, color: t.color, emoji: t.emoji }); 
         catMap.get(t.category).amount += t.amount; 
-        totalPeriodSpend += t.amount;
     });
     
-    let sCats = Array.from(catMap.entries()).sort((a, b) => b[1].amount - a[1].amount).map(e => ({ label: e[0], ...e[1] }));
+    // Aquí hemos eliminado el agrupamiento forzado. Ahora mapea todas tus categorías reales.
+    let finalSlices = Array.from(catMap.entries()).sort((a, b) => b[1].amount - a[1].amount).map(e => ({ label: e[0], ...e[1] }));
     
-    const MAX_SLICES = 6;
-    const THRESHOLD_PCT = 0.02;
-    let finalSlices = [];
-    let otrosAmount = 0;
-    window.currentOtrosCategories = [];
-
-    sCats.forEach((cat, index) => {
-        const isUnderThreshold = (cat.amount / totalPeriodSpend) < THRESHOLD_PCT;
-        const isBeyondMaxSlices = index >= MAX_SLICES;
-        if (isBeyondMaxSlices || isUnderThreshold) { otrosAmount += cat.amount; window.currentOtrosCategories.push(cat.label); } 
-        else { finalSlices.push(cat); }
-    });
-
-    if (otrosAmount > 0) { finalSlices.push({ label: 'Otros', amount: otrosAmount, color: '#9ca3af', emoji: '📦' }); }
-
     if (chartInstances.doughnut) { 
         chartInstances.doughnut.data.labels = finalSlices.map(d => d.label); 
         chartInstances.doughnut.data.datasets[0].data = finalSlices.map(d => d.amount); 
@@ -362,9 +350,33 @@ function updateCharts() {
     } else {
         chartInstances.doughnut = new Chart(dCtx, { 
             type: 'doughnut', 
-            data: { labels: finalSlices.map(d => d.label), datasets: [{ data: finalSlices.map(d => d.amount), backgroundColor: finalSlices.map(d => d.color), borderWidth: 2 }] }, 
-            options: { responsive: true, maintainAspectRatio: false, cutout: '68%', layout: { padding: 10 }, plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, font: { size: 10, weight: '600' } } }, tooltip: { padding: 12, callbacks: { label: c => ` ${c.label}: ${formatCur(c.raw)}` } } }, onHover: (e, el) => e.native.target.style.cursor = el[0] ? 'pointer' : 'default', 
-                onClick: (e, elements) => { if (elements.length > 0 && window.openDrilldown) { window.openDrilldown(chartInstances.doughnut.data.labels[elements[0].index]); } } 
+            data: { 
+                labels: finalSlices.map(d => d.label), 
+                datasets: [{ 
+                    data: finalSlices.map(d => d.amount), 
+                    backgroundColor: finalSlices.map(d => d.color), 
+                    borderWidth: 2,
+                    hoverOffset: 25 // El trozo salta y se amplía 25px al pasar el ratón
+                }] 
+            }, 
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                cutout: '65%', 
+                layout: { padding: 25 }, // Damos más espacio al lienzo para que el trozo ampliado no se corte al saltar
+                plugins: { 
+                    legend: { 
+                        position: 'right', 
+                        labels: { usePointStyle: true, boxWidth: 8, font: { size: 10, weight: '600' } } 
+                    }, 
+                    tooltip: { padding: 12, callbacks: { label: c => ` ${c.label}: ${formatCur(c.raw)}` } } 
+                }, 
+                onHover: (e, el) => e.native.target.style.cursor = el[0] ? 'pointer' : 'default', 
+                onClick: (e, elements) => { 
+                    if (elements.length > 0 && window.openDrilldown) { 
+                        window.openDrilldown(chartInstances.doughnut.data.labels[elements[0].index]); 
+                    } 
+                } 
             } 
         });
     }

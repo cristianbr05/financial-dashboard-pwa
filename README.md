@@ -17,10 +17,13 @@ Todo el procesamiento, clasificación y persistencia de datos se ejecuta estrict
 
 ## 📸 Interfaz y Funcionamiento
 
-*(Arrastra aquí tus capturas de pantalla. Ejemplo de estructura:)*
 | Vista General (Modo Claro) | Análisis Detallado (Modo Oscuro) |
 | :---: | :---: |
-| ![Dashboard Vista Claro](docs/screenshot-light.png) | ![Drilldown Modal](docs/screenshot-dark.png) |
+| ![Dashboard Vista Claro](docs/screenshot-1.png) | ![Dashboard Vista Oscura](docs/screenshot-2.png) |
+| :---: | :---: |
+| ![Desglose de Conceptos](docs/screenshot-3.png) | ![Movimientos Registrados](docs/screenshot-4.png) |
+| :---: | :---: |
+| ![Top Comercios](docs/screenshot-5.png) | ![Categorías](docs/screenshot-6.png) |
 
 ---
 
@@ -61,9 +64,3 @@ Al ser una aplicación 100% *Client-side*, no requiere Node.js ni bases de datos
    python -m http.server 8000
 
 3. Abre http://localhost:8000 en tu navegador.
-
----
-
-### 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT. Consulta el archivo LICENSE para más detalles. Puedes utilizar, modificar y distribuir este código libremente.

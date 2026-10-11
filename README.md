@@ -17,7 +17,8 @@ Todo el procesamiento, clasificación y persistencia de datos se ejecuta estrict
 
 ## 📸 Interfaz y Funcionamiento
 
-| Vista General (Modo Claro) | Vista General (Modo Oscuro) |
+| Vista General (Modo Claro) | Análisis Detallado (Modo Oscuro) |
+| :---: | :---: |
 | ![Dashboard Vista Claro](docs/screenshot-1.png) | ![Dashboard Vista Oscura](docs/screenshot-2.png) |
 | Desglose de Conceptos | Movimientos Registrados |
 | ![Desglose de Conceptos](docs/screenshot-3.png) | ![Movimientos Registrados](docs/screenshot-4.png) |

@@ -24,6 +24,8 @@ Todo el procesamiento, clasificación y persistencia de datos se ejecuta estrict
 | ![Desglose de Conceptos](docs/screenshot-3.png) | ![Movimientos Registrados](docs/screenshot-4.png) |
 | Top Comercios | Categorías |
 | ![Top Comercios](docs/screenshot-5.png) | ![Categorías](docs/screenshot-6.png) |
+| Almacén | Resumen de Gastos |
+| ![Almacén](docs/screenshot-7.png) | ![Resumen de Gastos](docs/screenshot-8.png) |
 
 ---
 

@@ -321,7 +321,6 @@ function updateCharts() {
     const barCtx = document.getElementById('barChart')?.getContext('2d'), dCtx = document.getElementById('doughnutChart')?.getContext('2d');
     if(!barCtx || !dCtx) return;
     
-    // --- GRÁFICO DE BARRAS (Evolución) ---
     const monthlyMap = new Map(); filteredTransactions.forEach(t => { if(!monthlyMap.has(t.sortKey)) monthlyMap.set(t.sortKey, { label: t.monthYearLabel, amount: 0 }); monthlyMap.get(t.sortKey).amount += t.amount; });
     const sData = Array.from(monthlyMap.entries()).sort((a, b) => a[0] - b[0]).map(e => e[1]);
     
@@ -332,16 +331,30 @@ function updateCharts() {
         chartInstances.bar = new Chart(barCtx, { type: 'line', data: { labels: sData.map(d => d.label), datasets: [{ data: sData.map(d => d.amount), backgroundColor: grad, borderColor: '#3b82f6', borderWidth: 2, fill: true, tension: 0.15, pointRadius: 2.5, pointHoverRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, layout: { padding: { left: -5, bottom: 10, top: 5, right: 5 } }, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { padding: 10, bodyFont: { size: 13 }, callbacks: { label: c => ' ' + formatCur(c.raw) } } }, scales: { y: { beginAtZero: true, border: {display:false}, ticks: {font: { size: 11 }, maxTicksLimit: 6, callback: v => formatComp(v) + ' €'} }, x: { grid: {display:false}, border: {display:false}, ticks: {font: { size: 10 }, maxRotation: 45, minRotation: 0, padding: 5} } } } });
     }
 
-    // --- GRÁFICO DE ANILLO (Distribución) ---
     const catMap = new Map(); 
     filteredTransactions.forEach(t => { 
         if (!catMap.has(t.category)) catMap.set(t.category, { amount: 0, color: t.color, emoji: t.emoji }); 
         catMap.get(t.category).amount += t.amount; 
     });
     
-    // Aquí hemos eliminado el agrupamiento forzado. Ahora mapea todas tus categorías reales.
-    let finalSlices = Array.from(catMap.entries()).sort((a, b) => b[1].amount - a[1].amount).map(e => ({ label: e[0], ...e[1] }));
-    
+    let allSlices = Array.from(catMap.entries()).sort((a, b) => b[1].amount - a[1].amount).map(e => ({ label: e[0], ...e[1] }));
+    let finalSlices = [];
+    let restoAmount = 0;
+    window.currentOtrosCategories = []; 
+
+    allSlices.forEach((cat, index) => {
+        if (index >= 8) {
+            restoAmount += cat.amount;
+            window.currentOtrosCategories.push(cat.label);
+        } else {
+            finalSlices.push(cat);
+        }
+    });
+
+    if (restoAmount > 0) {
+        finalSlices.push({ label: 'Resto de Gastos', amount: restoAmount, color: '#cbd5e1', emoji: '🧩' });
+    }
+
     if (chartInstances.doughnut) { 
         chartInstances.doughnut.data.labels = finalSlices.map(d => d.label); 
         chartInstances.doughnut.data.datasets[0].data = finalSlices.map(d => d.amount); 
@@ -350,37 +363,34 @@ function updateCharts() {
     } else {
         chartInstances.doughnut = new Chart(dCtx, { 
             type: 'doughnut', 
-            data: { 
-                labels: finalSlices.map(d => d.label), 
-                datasets: [{ 
-                    data: finalSlices.map(d => d.amount), 
-                    backgroundColor: finalSlices.map(d => d.color), 
-                    borderWidth: 2,
-                    hoverOffset: 25 // El trozo salta y se amplía 25px al pasar el ratón
-                }] 
-            }, 
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                cutout: '65%', 
-                layout: { padding: 25 }, // Damos más espacio al lienzo para que el trozo ampliado no se corte al saltar
-                plugins: { 
-                    legend: { 
-                        position: 'right', 
-                        labels: { usePointStyle: true, boxWidth: 8, font: { size: 10, weight: '600' } } 
-                    }, 
-                    tooltip: { padding: 12, callbacks: { label: c => ` ${c.label}: ${formatCur(c.raw)}` } } 
-                }, 
-                onHover: (e, el) => e.native.target.style.cursor = el[0] ? 'pointer' : 'default', 
-                onClick: (e, elements) => { 
-                    if (elements.length > 0 && window.openDrilldown) { 
-                        window.openDrilldown(chartInstances.doughnut.data.labels[elements[0].index]); 
-                    } 
-                } 
-            } 
+            data: { labels: finalSlices.map(d => d.label), datasets: [{ data: finalSlices.map(d => d.amount), backgroundColor: finalSlices.map(d => d.color), borderWidth: 2, hoverOffset: 10 }] }, 
+            options: { responsive: true, maintainAspectRatio: false, cutout: '68%', layout: { padding: 10 }, plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, font: { size: 10, weight: '600' } } }, tooltip: { padding: 12, callbacks: { label: c => ` ${c.label}: ${formatCur(c.raw)}` } } }, onHover: (e, el) => e.native.target.style.cursor = el[0] ? 'pointer' : 'default', onClick: (e, elements) => { if (elements.length > 0 && window.openDrilldown) { window.openDrilldown(chartInstances.doughnut.data.labels[elements[0].index]); } } } 
         });
     }
     updateChartTheme();
+}
+
+function openExpandedChart() {
+    const modal = document.getElementById('expandedChartModal');
+    const ctx = document.getElementById('expandedDoughnutCanvas')?.getContext('2d');
+    if(!modal || !ctx) return;
+
+    const catMap = new Map(); 
+    filteredTransactions.forEach(t => { 
+        if (!catMap.has(t.category)) catMap.set(t.category, { amount: 0, color: t.color }); 
+        catMap.get(t.category).amount += t.amount; 
+    });
+    let allSlices = Array.from(catMap.entries()).sort((a, b) => b[1].amount - a[1].amount).map(e => ({ label: e[0], ...e[1] }));
+
+    if(chartInstances.expandedDoughnut) { chartInstances.expandedDoughnut.destroy(); }
+
+    chartInstances.expandedDoughnut = new Chart(ctx, { 
+        type: 'doughnut', 
+        data: { labels: allSlices.map(d => d.label), datasets: [{ data: allSlices.map(d => d.amount), backgroundColor: allSlices.map(d => d.color), borderWidth: 2, hoverOffset: 35 }] }, 
+        options: { responsive: true, maintainAspectRatio: false, cutout: '50%', layout: { padding: 40 }, plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 12, padding: 20, font: { size: 13, weight: 'bold' } } }, tooltip: { padding: 15, bodyFont: {size: 14}, callbacks: { label: c => ` ${c.label}: ${formatCur(c.raw)}` } } }, onHover: (e, el) => e.native.target.style.cursor = el[0] ? 'pointer' : 'default', onClick: (e, elements) => { if (elements.length > 0 && window.openDrilldown) { closeModal(modal); setTimeout(() => window.openDrilldown(chartInstances.expandedDoughnut.data.labels[elements[0].index]), 300); } } } 
+    });
+    updateChartTheme();
+    openModal(modal);
 }
 
 function updateTopComercios() {
@@ -482,7 +492,7 @@ function applyCategorization(transactions, rules) {
                 break;
             }
         }
-        if(!matched) { t.category = 'Otros'; t.color = '#9ca3af'; t.emoji = '📦'; }
+        if(!matched) { t.category = 'Sin Clasificar'; t.color = '#64748b'; t.emoji = '❓'; }
         const words = t.description.replace(/[*\/\\#@]/g, ' ').split(' ').filter(w => w.length > 3);
         t.normalizedConcept = words.slice(0, 2).join(' ') || t.description.slice(0, 20);
     });
@@ -826,6 +836,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (calDrop && !calDrop.classList.contains('hidden')) calDrop.classList.add('hidden');
         }
     });
+
+const expandChartBtn = document.getElementById('expandChartBtn'), expandedChartModal = document.getElementById('expandedChartModal'), closeExpandedChartBtn = document.getElementById('closeExpandedChartBtn');
+if (expandChartBtn) expandChartBtn.addEventListener('click', openExpandedChart);
+if (closeExpandedChartBtn) closeExpandedChartBtn.addEventListener('click', () => closeModal(expandedChartModal));
+if (expandedChartModal) expandedChartModal.addEventListener('click', e => { if (e.target === expandedChartModal) closeModal(expandedChartModal); });
 
     updateCalendarUI();
 });

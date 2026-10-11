@@ -10,7 +10,7 @@
 
 Todo el procesamiento, clasificación y persistencia de datos se ejecuta estrictamente en local (*Client-side*), garantizando la privacidad absoluta de la información sin dependencias de bases de datos externas ni envíos a servidores de terceros.
 
-### 🟢 [Probar Demo en Vivo](https://cristianbr05.github.io/financial-dashboard-pwa)
+### 🟢 <a href="https://cristianbr05.github.io/financial-dashboard-pwa" target="_blank" rel="noopener noreferrer">Probar Demo en Vivo</a>
 *(Nota: Puedes utilizar el botón "Cargar datos de prueba" dentro de la aplicación para explorar las funciones sin necesidad de subir archivos reales).*
 
 ---

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fin-dash-v6.4';
+const CACHE_NAME = 'fin-dash-v8.2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -30,17 +30,18 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
+// Network-First: carga siempre tus últimos cambios en local y guarda copia para offline
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      return cached || fetch(event.request).then(response => {
-        // Guardamos copias en caché dinámicamente para soporte offline
-        if (!response || (response.status !== 200 && response.type !== 'opaque')) return response;
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone)).catch(() => {});
+    fetch(event.request)
+      .then(response => {
+        if (response && (response.status === 200 || response.type === 'opaque')) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone)).catch(() => {});
+        }
         return response;
-      }).catch(() => console.warn('Modo sin conexión activo'));
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
 });

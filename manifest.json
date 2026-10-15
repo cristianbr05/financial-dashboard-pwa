@@ -1,11 +1,11 @@
 {
-  "name": "Dashboard Financiero",
-  "short_name": "FinDash",
-  "description": "Analizador local privado de extractos bancarios",
+  "name": "Analizador Financiero Local Pro",
+  "short_name": "FinDash Pro",
+  "description": "Auditoría, flujo de caja y visualización privada de extractos bancarios 100% en local",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",
-  "theme_color": "#3b82f6",
+  "theme_color": "#0f172a",
   "icons": [
     {
       "src": "icon-512.png",

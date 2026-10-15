@@ -1,34 +1,378 @@
-:root { color-scheme: light; }
-.dark { color-scheme: dark; }
-body { transition: background-color 0.3s ease, color 0.3s ease; }
-.transition-theme { transition: background-color 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.3s; }
-.glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025); }
-.dark .glass-panel { background: rgba(31, 41, 55, 0.85); border: 1px solid rgba(75, 85, 99, 0.3); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15); }
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-.dark ::-webkit-scrollbar-thumb { background: #4b5563; }
-.dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
-input[type="search"]::-webkit-search-cancel-button { display: none; }
-input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-input[type="color"]::-webkit-color-swatch { border: none; border-radius: 6px; }
-body.incognito-active .blur-data { filter: blur(8px); opacity: 0.6; transition: filter 0.3s ease, opacity 0.3s ease; user-select: none; }
-body.incognito-active canvas { filter: blur(10px) grayscale(50%); opacity: 0.7; pointer-events: none; transition: filter 0.3s ease, opacity 0.3s ease; }
-body.incognito-active .blur-data:hover { filter: blur(0px); opacity: 1; }
-@keyframes toastEnter { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-@keyframes toastLeave { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
-.toast-enter { animation: toastEnter 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; pointer-events: auto; }
-.toast-leave { animation: toastLeave 0.3s ease-in forwards; pointer-events: auto; }
-.calendar-day.start-range { background-color: #3b82f6 !important; color: white !important; border-radius: 9999px 0 0 9999px !important; font-weight: bold; }
-.calendar-day.end-range { background-color: #3b82f6 !important; color: white !important; border-radius: 0 9999px 9999px 0 !important; font-weight: bold; }
-.calendar-day.in-range { background-color: #dbeafe !important; color: #1e40af !important; border-radius: 0 !important; }
-.dark .calendar-day.in-range { background-color: rgba(59, 130, 246, 0.25) !important; color: #93c5fd !important; }
-.calendar-day.single-selected { background-color: #3b82f6 !important; color: white !important; border-radius: 9999px !important; font-weight: bold; }
-.calendar-day.hover-range { background-color: #eff6ff !important; color: #2563eb !important; border-radius: 0 !important; }
-.dark .calendar-day.hover-range { background-color: rgba(59, 130, 246, 0.15) !important; color: #bfdbfe !important; }
-.calendar-day.hover-range.start-range-provisional { border-radius: 9999px 0 0 9999px !important; }
-.calendar-day.hover-range.end-range-provisional { border-radius: 0 9999px 9999px 0 !important; }
-.calendar-day.hover-range.single-provisional { border-radius: 9999px !important; }
-.calendar-day .day-num { position: relative; z-index: 10; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: 9999px; }
-.calendar-day.start-range .day-num, .calendar-day.end-range .day-num, .calendar-day.single-selected .day-num { background-color: #2563eb; }
+:root,
+html[data-accent="cobalto"] {
+    color-scheme: light;
+    --accent-50: 239 246 255;
+    --accent-100: 219 234 254;
+    --accent-200: 191 219 254;
+    --accent-300: 147 197 253;
+    --accent-400: 96 165 250;
+    --accent-500: 59 130 246;
+    --accent-600: 37 99 235;
+    --accent-700: 29 78 216;
+    --accent-800: 30 64 175;
+    --accent-900: 30 58 138;
+    --accent-950: 23 37 84;
+    --accent-hex: #3b82f6;
+}
+
+/* 2. Acero Petróleo (Cian Corporativo) */
+html[data-accent="petroleo"] {
+    --accent-50: 236 254 255;
+    --accent-100: 207 250 254;
+    --accent-200: 165 243 252;
+    --accent-300: 103 232 249;
+    --accent-400: 34 211 238;
+    --accent-500: 6 182 212;
+    --accent-600: 8 145 178;
+    --accent-700: 14 116 144;
+    --accent-800: 21 94 117;
+    --accent-900: 22 78 99;
+    --accent-950: 8 51 68;
+    --accent-hex: #06b6d4;
+}
+
+/* 3. Verde Jade (Banca Privada) */
+html[data-accent="jade"] {
+    --accent-50: 236 253 245;
+    --accent-100: 209 250 229;
+    --accent-200: 167 243 208;
+    --accent-300: 110 231 183;
+    --accent-400: 52 211 153;
+    --accent-500: 16 185 129;
+    --accent-600: 5 150 105;
+    --accent-700: 4 120 87;
+    --accent-800: 6 95 70;
+    --accent-900: 6 78 59;
+    --accent-950: 2 44 34;
+    --accent-hex: #10b981;
+}
+
+/* 4. Violeta Amatista (Fintech) */
+html[data-accent="amatista"] {
+    --accent-50: 245 243 255;
+    --accent-100: 237 233 254;
+    --accent-200: 221 214 254;
+    --accent-300: 196 181 253;
+    --accent-400: 167 139 250;
+    --accent-500: 139 92 246;
+    --accent-600: 124 58 237;
+    --accent-700: 109 40 217;
+    --accent-800: 91 33 182;
+    --accent-900: 76 29 149;
+    --accent-950: 46 16 101;
+    --accent-hex: #8b5cf6;
+}
+
+/* 5. Oro Ejecutivo (Ámbar Terminal) */
+html[data-accent="ambar"] {
+    --accent-50: 255 251 235;
+    --accent-100: 254 243 199;
+    --accent-200: 253 230 138;
+    --accent-300: 252 211 77;
+    --accent-400: 251 191 36;
+    --accent-500: 245 158 11;
+    --accent-600: 217 119 6;
+    --accent-700: 180 83 9;
+    --accent-800: 146 64 14;
+    --accent-900: 120 53 15;
+    --accent-950: 69 26 3;
+    --accent-hex: #f59e0b;
+}
+
+/* 6. Rojo Rubí (Vanguardia) */
+html[data-accent="rubi"] {
+    --accent-50: 255 241 242;
+    --accent-100: 255 228 230;
+    --accent-200: 254 205 211;
+    --accent-300: 253 164 175;
+    --accent-400: 251 113 133;
+    --accent-500: 244 63 94;
+    --accent-600: 225 29 72;
+    --accent-700: 190 18 60;
+    --accent-800: 159 18 57;
+    --accent-900: 136 19 55;
+    --accent-950: 76 5 25;
+    --accent-hex: #f43f5e;
+}
+
+.dark {
+    color-scheme: dark;
+}
+
+/* Transición suave y limpia entre cambios de color y tema */
+body,
+.glass-panel,
+button,
+select,
+input,
+span,
+i,
+div,
+th,
+td {
+    transition-property: background-color, border-color, color, box-shadow;
+    transition-duration: 0.35s;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mantener rapidez de apertura en modales */
+#vaultModal, #dictionaryModal, #txEditModal, #drilldownModal, #expandedChartModal, #cmdPaletteModal, #errorModal, #globalLoader,
+.scale-95, .scale-100 {
+    transition: opacity 0.2s ease, transform 0.2s ease !important;
+}
+
+.tabular-nums {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Tarjetas en Modo Claro */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(203, 213, 225, 0.9);
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+}
+
+/* ========================================================= */
+/* MODO OSCURO: GRAFITO OBSIDIANA (OSCURO CON CONTRASTE)     */
+/* ========================================================= */
+
+html.dark body {
+    background-color: #090b10 !important;
+    color: #f1f5f9 !important;
+}
+
+html.dark .glass-panel {
+    background-color: #12161f !important;
+    border: 1px solid #252d3d !important;
+    box-shadow: 
+        0 14px 28px -6px rgba(0, 0, 0, 0.85),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+html.dark select,
+html.dark input[type="text"],
+html.dark input[type="number"],
+html.dark #openCalendarBtn,
+html.dark #openCmdPaletteBtn,
+html.dark #openDictionaryBtn,
+html.dark #printReportBtn,
+html.dark #exportImageBtn,
+html.dark #incognitoToggle,
+html.dark #accentToggle,
+html.dark #themeToggle,
+html.dark #calendarDropdown {
+    background-color: #181e29 !important;
+    border-color: #2c364a !important;
+    color: #f8fafc !important;
+}
+
+html.dark #categoryBudgetsContainer,
+html.dark #rulesList,
+html.dark #tableScrollContainer {
+    background-color: #0d1017 !important;
+    border-color: #1e2533 !important;
+}
+
+html.dark thead {
+    background-color: #151a24 !important;
+    border-bottom: 1px solid #252d3d !important;
+}
+
+html.dark tbody tr:hover {
+    background-color: #1a212e !important;
+}
+
+html.dark #vaultModal > div,
+html.dark #dictionaryModal > div,
+html.dark #txEditModal > div,
+html.dark #drilldownModal > div,
+html.dark #expandedChartModal > div,
+html.dark #cmdPaletteModal > div,
+html.dark #errorModal > div {
+    background-color: #12161f !important;
+    border-color: #283142 !important;
+}
+
+/* Scrollbars estilizadas */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+html.dark ::-webkit-scrollbar-thumb {
+    background: #2c364a;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+    background: #3d4b66;
+}
+
+input[type="search"]::-webkit-search-cancel-button {
+    display: none;
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 8px;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+    outline: 2px solid rgb(var(--accent-500));
+    outline-offset: 2px;
+}
+
+/* Modo Incógnito */
+body.incognito-active .blur-data {
+    filter: blur(8px);
+    opacity: 0.65;
+    transition: filter 0.25s ease, opacity 0.25s ease;
+    user-select: none;
+}
+body.incognito-active canvas {
+    filter: blur(10px) grayscale(40%);
+    opacity: 0.7;
+    pointer-events: none;
+    transition: filter 0.25s ease, opacity 0.25s ease;
+}
+body.incognito-active .blur-data:hover {
+    filter: blur(0px);
+    opacity: 1;
+}
+
+/* Estado de Movimiento Excluido */
+tr.tx-excluded {
+    opacity: 0.48;
+    background-color: rgba(148, 163, 184, 0.06);
+}
+tr.tx-excluded .tx-amount-val {
+    text-decoration: line-through;
+}
+
+/* Paleta de Comandos Ctrl+K */
+.cmd-item-active {
+    background-color: rgb(var(--accent-500) / 0.14) !important;
+    color: rgb(var(--accent-600)) !important;
+}
+html.dark .cmd-item-active {
+    background-color: rgb(var(--accent-500) / 0.24) !important;
+    color: rgb(var(--accent-300)) !important;
+}
+
+/* Animaciones Toasts */
+@keyframes toastEnter {
+    from { transform: translateX(115%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes toastLeave {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(115%); opacity: 0; }
+}
+.toast-enter {
+    animation: toastEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    pointer-events: auto;
+}
+.toast-leave {
+    animation: toastLeave 0.22s ease-in forwards;
+    pointer-events: auto;
+}
+
+/* Calendario de Rango conectado al acento dinámico */
+.calendar-day.start-range {
+    background-color: rgb(var(--accent-600)) !important;
+    color: #ffffff !important;
+    border-radius: 9999px 0 0 9999px !important;
+    font-weight: 700;
+}
+.calendar-day.end-range {
+    background-color: rgb(var(--accent-600)) !important;
+    color: #ffffff !important;
+    border-radius: 0 9999px 9999px 0 !important;
+    font-weight: 700;
+}
+.calendar-day.in-range {
+    background-color: rgb(var(--accent-100)) !important;
+    color: rgb(var(--accent-800)) !important;
+    border-radius: 0 !important;
+}
+html.dark .calendar-day.in-range {
+    background-color: rgb(var(--accent-500) / 0.28) !important;
+    color: rgb(var(--accent-200)) !important;
+}
+.calendar-day.single-selected {
+    background-color: rgb(var(--accent-600)) !important;
+    color: #ffffff !important;
+    border-radius: 9999px !important;
+    font-weight: 700;
+}
+.calendar-day.hover-range {
+    background-color: rgb(var(--accent-50)) !important;
+    color: rgb(var(--accent-600)) !important;
+    border-radius: 0 !important;
+}
+html.dark .calendar-day.hover-range {
+    background-color: rgb(var(--accent-500) / 0.18) !important;
+    color: rgb(var(--accent-200)) !important;
+}
+.calendar-day .day-num {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    border-radius: 9999px;
+}
+
+/* Modo de Impresión / Informe PDF Ejecutivo */
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 12mm;
+    }
+    html, body, html.dark body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        font-size: 11px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    .no-print { display: none !important; }
+    .print-only { display: block !important; }
+    .glass-panel, html.dark .glass-panel {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    #dashboard { display: block !important; }
+    #tableScrollContainer {
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+    }
+    .h-\[44rem\] {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    tr.virtual-spacer-row { display: none !important; }
+}
